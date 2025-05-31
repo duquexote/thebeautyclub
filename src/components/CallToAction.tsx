@@ -27,11 +27,17 @@ const CallToAction: React.FC = () => {
   return (
     <div ref={sectionRef}>
       {/* CTA for Beauty Professionals */}
-      <section id="join" className="py-20 bg-gradient-to-br from-pink-500 to-purple-600 text-white">
-        <div className="container-custom">
+      <section id="join" className="py-20 relative text-white overflow-hidden" style={{ 
+        backgroundImage: "url('../images/profissional-da-beleza.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center"
+      }}>
+        {/* Overlay para garantir que o texto seja legível */}
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-500/80 to-purple-600/80"></div>
+        <div className="container-custom relative z-10">
           <div className="max-w-3xl mx-auto text-center animate-on-scroll translate-y-4">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-              📲 É profissional da beleza? Junte-se ao clube que transforma vidas.
+              É profissional da beleza? Junte-se ao clube que transforma vidas.
             </h2>
             <p className="text-xl mb-10 text-white/90">
               Se você tem CNPJ e certificação, pode entrar agora mesmo — e mudar seu negócio para sempre.
@@ -78,7 +84,7 @@ const CallToAction: React.FC = () => {
                 <div className="md:w-1/2">
                   <div className="aspect-video rounded-xl overflow-hidden shadow-md">
                     <img 
-                      src="https://images.pexels.com/photos/7697349/pexels-photo-7697349.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" 
+                      src="../images/estoque.png" 
                       alt="Beauty professionals networking" 
                       className="w-full h-full object-cover"
                     />

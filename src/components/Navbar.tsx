@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,10 +29,13 @@ const Navbar: React.FC = () => {
       <div className="container-custom flex justify-between items-center">
         <a
           href="#"
-          className={`flex items-center gap-2 text-xl font-bold ${scrolled ? 'text-purple-700' : 'text-white'}`}
+          className="flex items-center gap-2"
         >
-          <Sparkles className={`h-6 w-6 ${scrolled ? 'text-purple-600' : 'text-white'}`} />
-          <span>The Beauty Club</span>
+          <img 
+            src="../images/logo-tbc.svg" 
+            alt="The Beauty Club Logo" 
+            className={`h-10 ${scrolled ? 'filter-none' : 'brightness-0 invert'}`} 
+          />
         </a>
 
         {/* Desktop Navigation */}

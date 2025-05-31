@@ -28,9 +28,11 @@ const Story: React.FC = () => {
     <section id="about" className="py-20 bg-white" ref={sectionRef}>
       <div className="container-custom">
         <h2 className="section-title text-center animate-on-scroll translate-y-4">
-          De 5 para 5.000: a revolução que começou com um "não"
+          O que é a The Beauty Club?
         </h2>
-        
+        <p className="section-title text-center animate-on-scroll translate-y-4">
+        A história que começou com um “não” e transformou um grupo de 5 em mais de 5 mil.
+          </p>
         <div className="mt-16 relative">
           {/* Timeline line */}
           <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-pink-200 to-purple-300 rounded-full"></div>
@@ -47,8 +49,8 @@ const Story: React.FC = () => {
                   </div>
                   <h3 className="text-xl font-semibold mb-3">O início de tudo</h3>
                   <p className="text-gray-700">
-                    Um pequeno grupo de profissionais da beleza tentou comprar direto da fábrica. 
-                    A resposta? <span className="font-semibold">Não</span>. Mas isso foi apenas o começo.
+                  Um pequeno grupo de profissionais, tentou negociar uma compra direto de uma fábrica 
+                    A resposta? <span className="font-semibold">Não</span>. Só vendiam para distribuidores e atacado. Isso deu início ao nosso à nossa história.
                   </p>
                 </div>
               </div>
@@ -73,7 +75,7 @@ const Story: React.FC = () => {
                   <h3 className="text-xl font-semibold mb-3">Crescimento rápido</h3>
                   <p className="text-gray-700">
                     Em apenas uma semana, o grupo passou de 5 para 20 pessoas. 
-                    A voz começou a se espalhar e mais profissionais se interessaram pela iniciativa.
+                    A voz começou a se espalhar e mais profissionais se interessaram pela iniciativa. Começaram a surgir as primeiras oportunidades.
                   </p>
                 </div>
               </div>
@@ -90,7 +92,7 @@ const Story: React.FC = () => {
                   <h3 className="text-xl font-semibold mb-3">Um movimento nacional</h3>
                   <p className="text-gray-700">
                     Hoje, somos mais de 5.000 cabeleireiras, manicures e esteticistas conectadas pelo mesmo propósito: 
-                    crescer unidas. O The Beauty Club não é só um grupo — é um movimento.
+                    Ter a nossa importância reconhecida e receber os benefícios que merecemos. O The Beauty Club não é só um grupo — é um movimento.
                   </p>
                 </div>
               </div>

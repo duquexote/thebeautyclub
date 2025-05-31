@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { benefits } from "../data/benefits";
-import * as LucideIcons from "lucide-react";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Building2, Percent, Star, Gift, Users } from "lucide-react";
 
 interface IconProps {
   name: string;
@@ -9,8 +8,20 @@ interface IconProps {
 }
 
 const DynamicIcon: React.FC<IconProps> = ({ name, className }) => {
-  const Icon = (LucideIcons as any)[name];
-  return Icon ? <Icon className={className} /> : null;
+  switch (name) {
+    case "building-2":
+      return <Building2 className={className} />;
+    case "percent":
+      return <Percent className={className} />;
+    case "star":
+      return <Star className={className} />;
+    case "gift":
+      return <Gift className={className} />;
+    case "users":
+      return <Users className={className} />;
+    default:
+      return null;
+  }
 };
 
 const Benefits: React.FC = () => {

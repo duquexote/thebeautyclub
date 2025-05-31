@@ -15,7 +15,7 @@ export const testimonials: Testimonial[] = [
     name: "Priscila Oliveira",
     position: "Manicure",
     location: "BA",
-    imageUrl: "https://images.pexels.com/photos/4946604/pexels-photo-4946604.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+    imageUrl: "../images/testimonials-1.jpg"
   },
   {
     id: 3,
@@ -23,7 +23,7 @@ export const testimonials: Testimonial[] = [
     name: "Amanda Rocha",
     position: "Esteticista",
     location: "RJ",
-    imageUrl: "https://images.pexels.com/photos/5793947/pexels-photo-5793947.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+    imageUrl: "../images/testimonials-2.webp"
   },
   {
     id: 4,
@@ -31,6 +31,6 @@ export const testimonials: Testimonial[] = [
     name: "Camila Santos",
     position: "Cabeleireira",
     location: "MG",
-    imageUrl: "https://images.pexels.com/photos/5069608/pexels-photo-5069608.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+    imageUrl: "../images/testimonials-3.jpg"
   }
 ];

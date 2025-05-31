@@ -33,12 +33,12 @@ const Hero: React.FC = () => {
           <div className="mb-6 inline-block">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-pink-800 backdrop-blur-sm">
               <span className="mr-1">✨</span> 
-              Exclusivo para profissionais da beleza
+              100% Gratuito e EXCLUSIVO para profissionais da beleza
             </span>
           </div>
           
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight text-white">
-            Bem-vinda ao <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-200 to-purple-200">The Beauty Club</span>
+            Bem-vindos ao <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-200 to-purple-200">The Beauty Club</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-white mb-6">
@@ -46,9 +46,32 @@ const Hero: React.FC = () => {
           </p>
           
           <p className="text-lg text-white/90 mb-10 max-w-3xl mx-auto">
-            Mais de 5.000 cabelereiras, manicures e esteticistas unidas por um único propósito:
-            <br className="hidden sm:block" /> comprar melhor, crescer mais, lucrar juntas.
+            Somos mais de 5.000 cabelereiros, manicures, esteticistas e outros profissionais da área, com acesso direto às fábricas de cosméticos, a cursos e aos maiores eventos do Brasil.
           </p>
+          <div className="mb-6 mr-2 inline-block">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-pink-800 backdrop-blur-sm">
+              <span className="mr-1">✨</span> 
+              Produtos Grátis
+            </span>
+          </div>
+          <div className="mb-6 mr-2 inline-block">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-pink-800 backdrop-blur-sm">
+              <span className="mr-1">✨</span> 
+              Descontos
+            </span>
+          </div>
+          <div className="mb-6 mr-2 inline-block">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-pink-800 backdrop-blur-sm">
+              <span className="mr-1">✨</span> 
+              Brindes
+            </span>
+          </div>
+          <div className="mb-6 inline-block">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-pink-800 backdrop-blur-sm">
+              <span className="mr-1">✨</span> 
+              Benefícios
+            </span>
+          </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="#join" className="btn btn-primary text-lg">
