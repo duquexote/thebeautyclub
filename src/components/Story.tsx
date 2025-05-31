@@ -30,9 +30,9 @@ const Story: React.FC = () => {
         <h2 className="section-title text-center animate-on-scroll translate-y-4">
           O que é a The Beauty Club?
         </h2>
-        <p className="section-title text-center animate-on-scroll translate-y-4">
-        A história que começou com um “não” e transformou um grupo de 5 em mais de 5 mil.
-          </p>
+        <p className="text-xl md:text-2xl text-center animate-on-scroll translate-y-4 text-gray-600 mb-8 max-w-4xl mx-auto">
+          A história que começou com um "não" e transformou um grupo de 5 em mais de 5 mil.
+        </p>
         <div className="mt-16 relative">
           {/* Timeline line */}
           <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-pink-200 to-purple-300 rounded-full"></div>

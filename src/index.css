@@ -34,7 +34,7 @@
   }
   
   .section-title {
-    @apply text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-600;
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-600 leading-relaxed py-2;
   }
   
   .section-subtitle {
