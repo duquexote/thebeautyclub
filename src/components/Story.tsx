@@ -49,7 +49,7 @@ const Story: React.FC = () => {
                   </div>
                   <h3 className="text-xl font-semibold mb-3">O início de tudo</h3>
                   <p className="text-gray-700">
-                  Um pequeno grupo de profissionais, tentou negociar uma compra direto de uma fábrica 
+                  Um pequeno grupo de profissionais, tentou negociar uma compra direto de uma fábrica. 
                     A resposta? <span className="font-semibold">Não</span>. Só vendiam para distribuidores e atacado. Isso deu início ao nosso à nossa história.
                   </p>
                 </div>
@@ -75,7 +75,7 @@ const Story: React.FC = () => {
                   <h3 className="text-xl font-semibold mb-3">Crescimento rápido</h3>
                   <p className="text-gray-700">
                     Em apenas uma semana, o grupo passou de 5 para 20 pessoas. 
-                    A voz começou a se espalhar e mais profissionais se interessaram pela iniciativa. Começaram a surgir as primeiras oportunidades.
+                    A iniciativa começou a ganhar visibilidade, atraindo interesse de mais profissionais e abrindo as primeiras oportunidades.
                   </p>
                 </div>
               </div>
