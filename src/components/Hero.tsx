@@ -38,7 +38,7 @@ const Hero: React.FC = () => {
           </div>
           
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight text-white">
-            Bem-vindos ao <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-200 to-purple-200">The Beauty Club</span>
+            Bem-vindos ao <br></br><span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-200 to-purple-200">The Beauty Club</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-white mb-6">

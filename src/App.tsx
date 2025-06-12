@@ -1,11 +1,10 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import Hero from "./components/Hero";
-import Story from "./components/Story";
-import Benefits from "./components/Benefits";
-import Testimonials from "./components/Testimonials";
-import CallToAction from "./components/CallToAction";
 import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import BlogList from "./pages/BlogList";
+import Blog from "./pages/Blog";
 import { setupScrollAnimation } from "./utils/animation";
 
 function App() {
@@ -20,17 +19,17 @@ function App() {
   }, []);
 
   return (
-    <div className="font-sans antialiased">
-      <Navbar />
-      <main>
-        <Hero />
-        <Story />
-        <Benefits />
-        <Testimonials />
-        <CallToAction />
-      </main>
-      <Footer />
-    </div>
+    <Router>
+      <div className="font-sans antialiased">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/blog" element={<BlogList />} />
+          <Route path="/blog/:slug" element={<Blog />} />
+        </Routes>
+        <Footer />
+      </div>
+    </Router>
   );
 }
 

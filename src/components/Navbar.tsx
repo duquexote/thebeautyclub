@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,8 +29,8 @@ const Navbar: React.FC = () => {
       }`}
     >
       <div className="container-custom flex justify-between items-center">
-        <a
-          href="#"
+        <Link
+          to="/"
           className="flex items-center gap-2"
         >
           <img 
@@ -36,19 +38,32 @@ const Navbar: React.FC = () => {
             alt="The Beauty Club Logo" 
             className={`h-10 ${scrolled ? 'filter-none' : 'brightness-0 invert'}`} 
           />
-        </a>
+        </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
-          <a href="#about" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
-            Nossa História
-          </a>
-          <a href="#benefits" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
-            Benefícios
-          </a>
-          <a href="#testimonials" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
-            Depoimentos
-          </a>
+          {location.pathname === '/' ? (
+            <>
+              <a href="#about" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
+                Nossa História
+              </a>
+              <a href="#benefits" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
+                Benefícios
+              </a>
+              <a href="#testimonials" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
+                Depoimentos
+              </a>
+            </>
+          ) : null}
+          <Link to="/blog" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
+            Blog
+          </Link>
+          <Link to="/classificados" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
+            Classificados
+          </Link>
+          <Link to="/produtos" className={`${scrolled ? 'text-gray-700 hover:text-purple-600' : 'text-white/90 hover:text-white'}`}>
+            Produtos
+          </Link>
           <a href="#join" className="btn btn-primary">
             Quero ser sócia
           </a>
@@ -67,27 +82,52 @@ const Navbar: React.FC = () => {
       {isOpen && (
         <div className="md:hidden bg-white shadow-lg py-4 px-4 absolute top-full left-0 right-0">
           <div className="flex flex-col gap-4">
-            <a
-              href="#about"
+            {location.pathname === '/' && (
+              <>
+                <a
+                  href="#about"
+                  className="text-gray-700 hover:text-purple-600 py-2"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Nossa História
+                </a>
+                <a
+                  href="#benefits"
+                  className="text-gray-700 hover:text-purple-600 py-2"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Benefícios
+                </a>
+                <a
+                  href="#testimonials"
+                  className="text-gray-700 hover:text-purple-600 py-2"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Depoimentos
+                </a>
+              </>
+            )}
+            <Link
+              to="/blog"
               className="text-gray-700 hover:text-purple-600 py-2"
               onClick={() => setIsOpen(false)}
             >
-              Nossa História
-            </a>
-            <a
-              href="#benefits"
+              Blog
+            </Link>
+            <Link
+              to="/classificados"
               className="text-gray-700 hover:text-purple-600 py-2"
               onClick={() => setIsOpen(false)}
             >
-              Benefícios
-            </a>
-            <a
-              href="#testimonials"
+              Classificados
+            </Link>
+            <Link
+              to="/produtos"
               className="text-gray-700 hover:text-purple-600 py-2"
               onClick={() => setIsOpen(false)}
             >
-              Depoimentos
-            </a>
+              Produtos
+            </Link>
             <a
               href="#join"
               className="btn btn-primary w-full justify-center"
