@@ -35,19 +35,38 @@ export default function Login() {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Tentando fazer login com:', { email: formData.email });
+      
+      // Verificar se o cliente Supabase está inicializado corretamente
+      if (!supabase || !supabase.auth) {
+        throw new Error('Cliente Supabase não inicializado corretamente');
+      }
+      
+      // Tentativa de login com tratamento de erro detalhado
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.senha
       });
 
+      console.log('Resposta do login:', { data, error });
+
       if (error) throw error;
       
       // Login bem-sucedido
+      console.log('Login bem-sucedido:', data);
       const state = location.state as { from?: string } | null;
       navigate(state?.from || '/produtos');
     } catch (error: any) {
       console.error('Erro ao fazer login:', error);
-      setError(error.message || 'Erro ao fazer login. Verifique suas credenciais.');
+      // Mensagem de erro mais detalhada
+      const errorMessage = error.message || 'Erro ao fazer login. Verifique suas credenciais.';
+      setError(`${errorMessage} (Código: ${error.code || 'desconhecido'})`);
+      
+      // Tentativa de recuperação em caso de erro de API key
+      if (error.message?.includes('Invalid API key')) {
+        console.log('Tentando recuperar de erro de API key inválida...');
+        // Poderia implementar uma solução alternativa aqui
+      }
     } finally {
       setLoading(false);
     }

@@ -4,15 +4,23 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://xpyebyltmtoeljvknkfd.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweWVieWx0bXRvZWxqdmtua2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTYzNDQsImV4cCI6MjA2NTQzMjM0NH0.1Uu4v6JHM8F-hxS7_7RIUZUBvHRQMlRO9xZL-lqU-Zw';
 
-console.log('Inicializando Supabase com URL:', supabaseUrl);
-console.log('Usando chave anônima (primeiros 10 caracteres):', supabaseAnonKey.substring(0, 10) + '...');
+// Verificar se estamos em ambiente de desenvolvimento ou produção
+const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-// Cliente Supabase usando a chave anônima para operações do frontend
+console.log(`Inicializando Supabase em ambiente de ${isDevelopment ? 'desenvolvimento' : 'produção'}`);
+console.log('URL Supabase:', supabaseUrl);
+
+// Cliente Supabase com opções específicas para melhorar a compatibilidade
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'thebeautyclub@1.0.0'
+    }
   }
 });
 
