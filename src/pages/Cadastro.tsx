@@ -176,18 +176,20 @@ export default function Cadastro() {
       
       if (userError) throw userError;
       
-      if (!userData || !userData.id) {
+      // Verificar se temos os dados do usuário e o ID
+      if (!userData || !userData.user || !userData.user.id) {
         console.error('ID do usuário não encontrado:', userData);
         throw new Error('ID do usuário não encontrado');
       }
       
-      console.log('ID do usuário criado:', userData.id);
+      const userId = userData.user.id;
+      console.log('ID do usuário criado:', userId);
       
       // Atualizar a tabela socias com o UUID do usuário e nome completo
       const { error: updateError } = await supabase
         .from('socias')
         .update({ 
-          id: userData.id, // Usando a coluna id em vez de uuid
+          id: userId, // Usando a coluna id em vez de uuid
           nome: `${nome} ${sobrenome}`.trim() // Concatenando nome e sobrenome
         })
         .eq('numero', numero);
@@ -415,16 +417,18 @@ export default function Cadastro() {
       
       if (userError) throw userError;
       
-      if (!userData || !userData.id) {
+      // Verificar se temos os dados do usuário e o ID
+      if (!userData || !userData.user || !userData.user.id) {
         console.error('ID do usuário não encontrado:', userData);
         throw new Error('ID do usuário não encontrado');
       }
       
-      console.log('ID do usuário criado:', userData.id);
+      const userId = userData.user.id;
+      console.log('ID do usuário criado:', userId);
       
       // Criar registro na tabela socias
       const { error: sociaError } = await supabase.from('socias').insert({
-        id: userData.id, // Usando a coluna id em vez de uuid
+        id: userId, // Usando a coluna id em vez de uuid
         nome: `${dadosCadastro.nome} ${dadosCadastro.sobrenome}`.trim(), // Concatenando nome e sobrenome
         email: dadosCadastro.email,
         numero: dadosCadastro.numero,
