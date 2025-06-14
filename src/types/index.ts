@@ -7,6 +7,9 @@ export interface Testimonial {
   imageUrl: string;
 }
 
+export * from './Socia';
+export * from './Produto';
+
 export interface Benefit {
   id: number;
   title: string;
