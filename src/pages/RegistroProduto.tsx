@@ -1,9 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import { Produto } from '../types/Produto';
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function RegistroProduto() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  
+  useEffect(() => {
+    // Verificar se o usuário está autenticado
+    if (isAuthenticated === false) {
+      navigate('/login', { state: { from: '/admin/produtos/novo', message: 'Você precisa estar logado como administrador para registrar produtos.' } });
+    }
+    // isAuthenticated pode ser null inicialmente, nesse caso não fazemos nada até que o valor seja determinado
+  }, [isAuthenticated, navigate]);
   const [produto, setProduto] = useState<Partial<Produto>>({
     nome: '',
     preco: 0,

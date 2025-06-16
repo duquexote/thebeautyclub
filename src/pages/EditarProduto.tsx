@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import { Produto } from '../types/Produto';
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function EditarProduto() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   
   const [produto, setProduto] = useState<Partial<Produto>>({
     nome: '',
@@ -41,10 +43,14 @@ export default function EditarProduto() {
   const [secao3ImagePreview, setSecao3ImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
+    // Verificar se o usuário está autenticado
+    if (isAuthenticated === false) {
+      navigate('/login', { state: { from: `/admin/produtos/editar/${id}`, message: 'Você precisa estar logado como administrador para editar produtos.' } });
+    } else if (isAuthenticated === true && id) {
       fetchProduto(id);
     }
-  }, [id]);
+    // isAuthenticated pode ser null inicialmente, nesse caso não fazemos nada até que o valor seja determinado
+  }, [isAuthenticated, id, navigate]);
 
   async function fetchProduto(produtoId: string) {
     try {
