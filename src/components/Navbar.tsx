@@ -32,25 +32,57 @@ const Navbar: React.FC = () => {
     const fetchUserName = async () => {
       if (user?.id) {
         try {
-          const { data: sociaData } = await supabase
+          // Primeiro, verificar se temos o nome do usuário no localStorage
+          const cachedUserName = localStorage.getItem(`user_name_${user.id}`);
+          if (cachedUserName) {
+            setUserName(cachedUserName);
+            return;
+          }
+          
+          // Se não tiver no cache, buscar da API
+          const { data: sociaData, error } = await supabase
             .from('socias')
             .select('nome')
             .eq('id', user.id)
             .single();
           
+          if (error) {
+            console.error('Erro ao buscar dados do usuário:', error);
+            // Usar o email como fallback se não conseguir buscar o nome
+            if (user.email) {
+              const emailName = user.email.split('@')[0];
+              setUserName(emailName);
+              // Armazenar no localStorage para uso futuro
+              localStorage.setItem(`user_name_${user.id}`, emailName);
+            }
+            return;
+          }
+          
           if (sociaData?.nome) {
             // Extrair o primeiro nome
             const primeiroNome = sociaData.nome.split(' ')[0];
             setUserName(primeiroNome);
+            // Armazenar no localStorage para uso futuro
+            localStorage.setItem(`user_name_${user.id}`, primeiroNome);
+          } else if (user.email) {
+            // Fallback para o email se não tiver nome
+            const emailName = user.email.split('@')[0];
+            setUserName(emailName);
+            localStorage.setItem(`user_name_${user.id}`, emailName);
           }
         } catch (error) {
           console.error('Erro ao buscar dados do usuário:', error);
+          // Usar o email como fallback
+          if (user.email) {
+            const emailName = user.email.split('@')[0];
+            setUserName(emailName);
+          }
         }
       } else {
         setUserName('');
       }
     };
-    
+
     fetchUserName();
   }, [user]);
   

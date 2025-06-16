@@ -56,11 +56,34 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   // Verificar autenticação de todas as formas possíveis
   const hasLocalSession = checkLocalStorageSession();
-  const isUserAuthenticated = isAuthenticated || !!user || !!session || hasLocalSession;
+  
+  // Verificar manualmente se há um token válido no localStorage (formato Supabase)
+  const checkSupabaseToken = () => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.split('//')[1];
+      if (supabaseUrl) {
+        const key = `sb-${supabaseUrl}-auth-token`;
+        const storedData = localStorage.getItem(key);
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          if (parsedData && parsedData.user) {
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao verificar token do Supabase:', e);
+    }
+    return false;
+  };
+  
+  const hasSupabaseToken = checkSupabaseToken();
+  const isUserAuthenticated = isAuthenticated || !!user || !!session || hasLocalSession || hasSupabaseToken;
   
   console.log('Status final de autenticação:', { 
     isUserAuthenticated, 
-    hasLocalSession 
+    hasLocalSession,
+    hasSupabaseToken
   });
   
   // Redireciona para login se não estiver autenticado

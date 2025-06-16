@@ -199,6 +199,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Função para verificar e obter sessão do localStorage no formato do Supabase
+  const getSupabaseSessionFromLocalStorage = () => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+      const key = `sb-${supabaseUrl}-auth-token`;
+      const storedSession = localStorage.getItem(key);
+      
+      if (storedSession) {
+        const sessionData = JSON.parse(storedSession);
+        if (sessionData.access_token && sessionData.refresh_token) {
+          return sessionData;
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao obter sessão do Supabase do localStorage:', e);
+    }
+    return null;
+  };
+
   // Efeito para verificar autenticação ao carregar
   useEffect(() => {
     const initAuth = async () => {
@@ -213,15 +232,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(data.session.user);
           setSession(data.session);
         } else {
-          // Se não houver sessão no Supabase, verificar no localStorage
-          const existingSession = getExistingSession();
+          // Tentar obter sessão do localStorage no formato do Supabase
+          const supabaseSession = getSupabaseSessionFromLocalStorage();
           
-          if (existingSession) {
+          if (supabaseSession) {
+            console.log('Sessão encontrada no localStorage, tentando restaurar');
+            
             // Tentar restaurar a sessão
             try {
               await supabase.auth.setSession({
-                access_token: existingSession.access_token,
-                refresh_token: existingSession.refresh_token
+                access_token: supabaseSession.access_token,
+                refresh_token: supabaseSession.refresh_token
               });
               
               // Verificar se a sessão foi restaurada
@@ -232,12 +253,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setUser(refreshedData.session.user);
                 setSession(refreshedData.session);
               } else {
-                console.log('Não foi possível restaurar a sessão');
-                localStorage.removeItem('supabase.auth.token');
+                console.log('Não foi possível restaurar a sessão via Supabase');
+                
+                // Usar os dados do localStorage diretamente como fallback
+                if (supabaseSession.user) {
+                  console.log('Usando dados de usuário do localStorage como fallback');
+                  setUser(supabaseSession.user);
+                  // Criar uma sessão simples para manter a autenticação
+                  setSession({
+                    access_token: supabaseSession.access_token,
+                    refresh_token: supabaseSession.refresh_token,
+                    user: supabaseSession.user
+                  });
+                } else {
+                  // Tentar nossa sessão personalizada
+                  const customSession = getExistingSession();
+                  if (customSession?.currentSession?.user) {
+                    console.log('Usando sessão personalizada como fallback');
+                    setUser(customSession.currentSession.user);
+                    setSession(customSession.currentSession);
+                  } else {
+                    // Limpar localStorage se não conseguir restaurar
+                    console.log('Nenhuma sessão válida encontrada');
+                    localStorage.removeItem('supabase.auth.token');
+                    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+                    localStorage.removeItem(`sb-${supabaseUrl}-auth-token`);
+                  }
+                }
               }
             } catch (error) {
               console.error('Erro ao restaurar sessão:', error);
-              localStorage.removeItem('supabase.auth.token');
+            }
+          } else {
+            // Verificar nossa sessão personalizada
+            const existingSession = getExistingSession();
+            
+            if (existingSession) {
+              console.log('Usando sessão personalizada');
+              setUser(existingSession.currentSession.user);
+              setSession(existingSession.currentSession);
             }
           }
         }
@@ -263,6 +317,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setSession(null);
           localStorage.removeItem('supabase.auth.token');
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+          localStorage.removeItem(`sb-${supabaseUrl}-auth-token`);
         }
       }
     );
