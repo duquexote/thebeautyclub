@@ -2,39 +2,26 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import { Produto } from '../types/Produto';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Produtos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Verificar se o usuário está autenticado
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data?.user) {
-        setIsAuthenticated(false);
-        navigate('/login', { state: { from: '/produtos', message: 'Você precisa estar logado para acessar os produtos.' } });
-      } else {
-        setIsAuthenticated(true);
-        fetchProdutos();
-      }
-    };
-    
-    checkAuth();
-    
-    // Configurar listener para mudanças na autenticação
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        navigate('/login', { state: { from: '/produtos', message: 'Você precisa estar logado para acessar os produtos.' } });
-      }
-    });
-    
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
-  }, [navigate]);
+    // Se não estiver autenticado, redirecionar para login
+    if (isAuthenticated === false) {
+      navigate('/login', { state: { from: '/produtos', message: 'Você precisa estar logado para acessar os produtos.' } });
+    } else if (isAuthenticated === true) {
+      // Se estiver autenticado, buscar produtos
+      fetchProdutos();
+    }
+    // isAuthenticated pode ser null inicialmente, nesse caso não fazemos nada até que o valor seja determinado
+  }, [isAuthenticated, navigate]);
+  
+  // Não precisamos mais do listener de autenticação, pois o contexto já cuida disso
   
   const fetchProdutos = async () => {
     try {
