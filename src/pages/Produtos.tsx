@@ -31,35 +31,44 @@ export default function Produtos() {
 
       // Abordagem alternativa: fazer uma requisição fetch direta para a API REST do Supabase
       // Isso evita problemas com o cliente Supabase e garante que usamos a chave correta
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/produtos?select=*&ativo=eq.true&order=created_at.desc`,
-        {
-          method: 'GET',
-          headers: {
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'Content-Type': 'application/json'
+      
+      // Usar uma chave fixa para debug - REMOVER DEPOIS DE TESTAR
+      // Esta é apenas uma solução temporária para diagnosticar o problema
+      const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweWVieWx0bXRvZWxqdmtua2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTYzNDQsImV4cCI6MjA2NTQzMjM0NH0.1Uu4v6JHM8F-hxS7_7RIUZUBvHRQMlRO9xZL-lqU-Zw';
+      
+      console.log('Tentando acessar com chave fixa');
+      
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/produtos?select=*&order=created_at.desc`,
+          {
+            method: 'GET',
+            headers: {
+              'apikey': ANON_KEY,
+              'Authorization': `Bearer ${ANON_KEY}`,
+              'Content-Type': 'application/json'
+            }
           }
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Erro na resposta da API:', errorData);
+          throw new Error(`Erro ao buscar produtos: ${response.statusText}`);
         }
-      );
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Erro na resposta da API:', errorData);
-        throw new Error(`Erro ao buscar produtos: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-
-      // Não precisamos mais verificar error do Supabase, pois estamos usando fetch diretamente
-      console.log(`${data.length} produtos carregados com sucesso`);
-
-      if (data) {
-        console.log(`${data.length} produtos carregados com sucesso`);
+        
+        const data = await response.json();
+        console.log('Dados obtidos com sucesso usando chave fixa:', data.length, 'produtos');
         setProdutos(data);
-      } else {
-        setProdutos([]);
+        return;
+      } catch (fetchError: any) {
+        console.error('Erro na requisição com chave fixa:', fetchError);
+        setError(`Falha ao acessar API: ${fetchError.message || 'Erro desconhecido'}`);
+      } finally {
+        setLoading(false);
       }
+
+      // Não precisamos mais deste bloco, pois já tratamos os dados no bloco try/catch acima
     } catch (err: any) {
       console.error('Erro ao buscar produtos:', err);
       setError(err.message || 'Erro ao carregar produtos');
