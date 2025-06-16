@@ -14,6 +14,14 @@ const isDevelopment = window.location.hostname === 'localhost' || window.locatio
 
 console.log(`Inicializando Supabase em ambiente de ${isDevelopment ? 'desenvolvimento' : 'produção'}`);
 console.log('URL Supabase:', supabaseUrl);
+console.log('Chave anônima disponível:', supabaseAnonKey ? 'Sim (primeiros 5 caracteres: ' + supabaseAnonKey.substring(0, 5) + '...)' : 'Não');
+
+// Em ambiente de produção, verificar se as variáveis de ambiente estão disponíveis
+if (!isDevelopment) {
+  console.log('Verificando variáveis de ambiente em produção:');
+  console.log('import.meta.env disponível:', !!import.meta.env);
+  console.log('Todas as variáveis de ambiente disponíveis:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
+}
 
 // Função para verificar se há uma sessão existente no localStorage
 const getExistingSession = () => {
@@ -49,25 +57,79 @@ const getExistingSession = () => {
   return null;
 };
 
-// Cliente Supabase com chave anônima
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'thebeautyclub@1.0.0'
-    }
+// Função para criar o cliente Supabase com opções adicionais para produção
+const createSupabaseClient = () => {
+  // Verificar se as variáveis de ambiente estão disponíveis
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('ERRO CRÍTICO: Variáveis de ambiente do Supabase não estão disponíveis!');
+    // Usar valores padrão apenas para evitar erros de inicialização, mas isso não vai funcionar corretamente
+    return createClient(
+      'https://xpyebyltmtoeljvknkfd.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweWVieWx0bXRvZWxqdmtua2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTYzNDQsImV4cCI6MjA2NTQzMjM0NH0.1Uu4v6JHM8F-hxS7_7RIUZUBvHRQMlRO9xZL-lqU-Zw',
+      {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'thebeautyclub@1.0.0'
+          }
+        }
+      }
+    );
   }
-});
+
+  // Criar o cliente com as variáveis de ambiente
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'thebeautyclub@1.0.0'
+      }
+    }
+  });
+};
+
+// Cliente Supabase com chave anônima
+export const supabase = createSupabaseClient();
 
 // Adicionar um listener para mudanças na sessão
-supabase.auth.onAuthStateChange((event) => {
+supabase.auth.onAuthStateChange((event, session) => {
   console.log('Evento de autenticação:', event);
-  // O Supabase gerencia automaticamente os tokens de autenticação nas requisições
-  // quando a sessão é estabelecida corretamente
+  
+  // Verificar se temos uma sessão válida
+  if (session) {
+    console.log('Sessão válida detectada no evento de autenticação');
+    
+    // Armazenar a sessão no localStorage no formato que o Supabase espera
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+      const supabaseAuthKey = `sb-${supabaseUrl}-auth-token`;
+      
+      // Verificar se já existe uma sessão armazenada
+      const existingSession = localStorage.getItem(supabaseAuthKey);
+      if (!existingSession) {
+        console.log('Armazenando nova sessão no localStorage');
+        
+        const sessionData = {
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_at: Math.floor(Date.now() / 1000) + (session.expires_in || 3600),
+          user: session.user
+        };
+        
+        localStorage.setItem(supabaseAuthKey, JSON.stringify(sessionData));
+      }
+    } catch (error) {
+      console.error('Erro ao armazenar sessão no localStorage:', error);
+    }
+  }
 });
 
 // Verificar se a chave de API está sendo usada corretamente
@@ -84,6 +146,23 @@ supabase.auth.getSession().then(({ data }) => {
 }).catch(error => {
   console.error('Erro ao verificar sessão:', error);
 });
+
+// Verificar se estamos em produção e se a chave de API está correta
+if (!isDevelopment) {
+  console.log('Verificando configuração em ambiente de produção:');
+  console.log('Chave anônima completa:', supabaseAnonKey.length > 20 ? 'Sim' : 'Não');
+  
+  // Verificar se a chave está sendo truncada ou mal formada
+  if (supabaseAnonKey.indexOf('.') === -1) {
+    console.error('ERRO: A chave anônima não parece ser um JWT válido (faltam pontos)');
+  }
+  
+  // Verificar se a chave tem o formato correto (deve ter 3 partes separadas por pontos)
+  const parts = supabaseAnonKey.split('.');
+  if (parts.length !== 3) {
+    console.error('ERRO: A chave anônima não tem o formato JWT esperado (header.payload.signature)');
+  }
+}
 
 // Tentar restaurar a sessão se existir
 const existingSession = getExistingSession();
