@@ -183,10 +183,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Função para fazer logout
   const signOut = async () => {
     try {
+      console.log('Iniciando processo de logout');
+      // Primeiro limpar a sessão no Supabase
       await supabase.auth.signOut();
-      localStorage.removeItem('supabase.auth.token');
+      
+      // Usar a função clearAllAuthData para limpar todos os dados de autenticação
+      clearAllAuthData();
+      console.log('Todos os dados de autenticação foram limpos');
+      
+      // Atualizar o estado do contexto
       setUser(null);
       setSession(null);
+      console.log('Logout concluído com sucesso');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
