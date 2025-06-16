@@ -91,8 +91,8 @@ const AdminAuth: React.FC<AdminAuthProps> = ({
 
         // Se chegamos aqui, não foi possível autenticar o usuário
         console.log('AdminAuth - Não foi possível autenticar o usuário');
-        // Redirecionar para a página de login
-        navigate('/admin/login');
+        // Redirecionar para a página de login correta
+        navigate(redirectTo);
       } catch (error: any) { 
         console.error('AdminAuth - Erro ao verificar autenticação:', error);
         setError(error.message || 'Erro ao verificar autenticação');
