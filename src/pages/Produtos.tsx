@@ -32,21 +32,33 @@ export default function Produtos() {
       // Abordagem alternativa: fazer uma requisição fetch direta para a API REST do Supabase
       // Isso evita problemas com o cliente Supabase e garante que usamos a chave correta
       
-      // Usar uma chave fixa para debug - REMOVER DEPOIS DE TESTAR
+      // Usar a chave anônima correta obtida diretamente do Supabase
       // Esta é apenas uma solução temporária para diagnosticar o problema
-      const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweWVieWx0bXRvZWxqdmtua2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTYzNDQsImV4cCI6MjA2NTQzMjM0NH0.1Uu4v6JHM8F-hxS7_7RIUZUBvHRQMlRO9xZL-lqU-Zw';
+      const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweWVieWx0bXRvZWxqdmtua2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTYzNDQsImV4cCI6MjA2NTQzMjM0NH0.PkF7Kp_EiAF6QbhlKamOtKSG_Z03HZwQ_pUbxXoLOwo';
       
       console.log('Tentando acessar com chave fixa');
       
       try {
+        // Adiciona um timestamp para evitar cache
+        const timestamp = new Date().getTime();
+        const url = `${supabaseUrl}/rest/v1/produtos?select=*&order=created_at.desc&_t=${timestamp}`;
+        
+        console.log('URL completa da requisição:', url);
+        console.log('Headers da requisição:', {
+          'apikey': ANON_KEY.substring(0, 10) + '...',
+          'Authorization': `Bearer ${ANON_KEY.substring(0, 10)}...`,
+          'Content-Type': 'application/json'
+        });
+        
         const response = await fetch(
-          `${supabaseUrl}/rest/v1/produtos?select=*&order=created_at.desc`,
+          url,
           {
             method: 'GET',
             headers: {
               'apikey': ANON_KEY,
               'Authorization': `Bearer ${ANON_KEY}`,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store'
             }
           }
         );
