@@ -164,6 +164,62 @@ if (!isDevelopment) {
   }
 }
 
+export const checkApiKey = () => {
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  if (!supabaseAnonKey) {
+    console.error('Chave anônima do Supabase não definida');
+    return false;
+  }
+  
+  // Verificar formato básico da chave anônima (deve ser um JWT)
+  if (!supabaseAnonKey.includes('.')) {
+    console.error('VITE_SUPABASE_ANON_KEY não parece ser um JWT válido');
+    return false;
+  }
+  
+  return true;
+};
+
+export const restoreSession = async () => {
+  try {
+    // Verificar se há uma sessão no formato atual do Supabase
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+    const key = `sb-${supabaseUrl}-auth-token`;
+    const storedSession = localStorage.getItem(key);
+    
+    if (storedSession) {
+      console.log('Encontrada sessão no localStorage, tentando restaurar...');
+      const sessionData = JSON.parse(storedSession);
+      
+      if (sessionData && sessionData.access_token && sessionData.refresh_token) {
+        try {
+          // Tentar definir a sessão no cliente Supabase
+          const { data, error } = await supabase.auth.setSession({
+            access_token: sessionData.access_token,
+            refresh_token: sessionData.refresh_token
+          });
+          
+          if (error) {
+            console.error('Erro ao restaurar sessão do localStorage:', error);
+            return null;
+          }
+          
+          console.log('Sessão restaurada com sucesso do localStorage');
+          return data.session;
+        } catch (error) {
+          console.error('Erro ao restaurar sessão:', error);
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Erro ao tentar restaurar sessão:', error);
+    return null;
+  }
+};
+
 // Tentar restaurar a sessão se existir
 const existingSession = getExistingSession();
 if (existingSession) {

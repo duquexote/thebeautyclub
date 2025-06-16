@@ -3,36 +3,23 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import { Produto } from '../types/Produto';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import AdminAuth from '../components/AdminAuth';
 
-export default function AdminProdutos() {
+function ProdutosContent() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState({ text: '', type: '' });
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    // Verificar se o usuário está autenticado
-    if (isAuthenticated === false) {
-      navigate('/login', { state: { from: '/admin/produtos', message: 'Você precisa estar logado como administrador para acessar esta página.' } });
-    } else if (isAuthenticated === true) {
-      fetchProdutos();
-    }
-    // isAuthenticated pode ser null inicialmente, nesse caso não fazemos nada até que o valor seja determinado
-  }, [isAuthenticated, navigate]);
+    fetchProdutos();
+  }, []);
 
   async function fetchProdutos() {
     try {
       setLoading(true);
       console.log('Iniciando busca de produtos...');
-      
-      // Verificar se o usuário está autenticado usando o contexto
-      console.log('Status da autenticação:', { 
-        isAuthenticated: isAuthenticated,
-        userId: user?.id
-      });
       
       // Buscar produtos com log detalhado
       console.log('Executando query na tabela produtos...');
@@ -303,5 +290,14 @@ export default function AdminProdutos() {
         </div>
       )}
     </div>
+  );
+}
+
+// Componente principal que usa o AdminAuth como wrapper
+export default function AdminProdutos() {
+  return (
+    <AdminAuth redirectTo="/login">
+      <ProdutosContent />
+    </AdminAuth>
   );
 }
