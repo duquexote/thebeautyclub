@@ -29,6 +29,42 @@ export default function Login() {
     });
   };
 
+  // Função para fazer login usando a API serverless
+  const loginViaApi = async (email: string, password: string) => {
+    try {
+      // Determinar a URL da API com base no ambiente
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apiUrl = isDevelopment 
+        ? 'http://localhost:3000/api/auth' // URL local para desenvolvimento
+        : '/api/auth'; // URL relativa para produção
+      
+      console.log(`Usando API de autenticação em: ${apiUrl}`);
+      
+      // Chamada para a API serverless
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          action: 'login'
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao fazer login');
+      }
+      
+      const data = await response.json();
+      return { data, error: null };
+    } catch (error: any) {
+      return { data: null, error };
+    }
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -37,23 +73,44 @@ export default function Login() {
     try {
       console.log('Tentando fazer login com:', { email: formData.email });
       
-      // Verificar se o cliente Supabase está inicializado corretamente
-      if (!supabase || !supabase.auth) {
-        throw new Error('Cliente Supabase não inicializado corretamente');
+      // Primeiro, tentar login via API serverless
+      const { data, error } = await loginViaApi(formData.email, formData.senha);
+      
+      // Se houver erro na API, tentar diretamente com Supabase como fallback
+      if (error) {
+        console.log('Erro na API, tentando diretamente com Supabase:', error);
+        
+        // Verificar se o cliente Supabase está inicializado corretamente
+        if (!supabase || !supabase.auth) {
+          throw new Error('Cliente Supabase não inicializado corretamente');
+        }
+        
+        // Tentativa de login direta com Supabase
+        const supabaseResult = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.senha
+        });
+        
+        if (supabaseResult.error) throw supabaseResult.error;
+        
+        // Login bem-sucedido via Supabase
+        console.log('Login bem-sucedido via Supabase:', supabaseResult.data);
+        const state = location.state as { from?: string } | null;
+        navigate(state?.from || '/produtos');
+        return;
       }
       
-      // Tentativa de login com tratamento de erro detalhado
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.senha
-      });
-
-      console.log('Resposta do login:', { data, error });
-
-      if (error) throw error;
+      // Login bem-sucedido via API
+      console.log('Login bem-sucedido via API:', data);
       
-      // Login bem-sucedido
-      console.log('Login bem-sucedido:', data);
+      // Definir a sessão no Supabase para manter o estado de autenticação
+      if (data?.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        });
+      }
+      
       const state = location.state as { from?: string } | null;
       navigate(state?.from || '/produtos');
     } catch (error: any) {
@@ -64,8 +121,7 @@ export default function Login() {
       
       // Tentativa de recuperação em caso de erro de API key
       if (error.message?.includes('Invalid API key')) {
-        console.log('Tentando recuperar de erro de API key inválida...');
-        // Poderia implementar uma solução alternativa aqui
+        console.log('Erro de API key inválida. Tente novamente mais tarde.');
       }
     } finally {
       setLoading(false);
