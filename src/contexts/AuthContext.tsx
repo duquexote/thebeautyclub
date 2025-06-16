@@ -303,8 +303,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setSession(userSession.currentSession);
               }
             }
-          } else {
-            // Verificar nossa sessão personalizada
+          }
+          
+          // Verificar nossa sessão personalizada se ainda não temos usuário
+          if (!user) {
             const existingSession = getExistingSession();
             
             if (existingSession) {
