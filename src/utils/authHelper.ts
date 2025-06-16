@@ -123,8 +123,8 @@ export const checkAndRestoreSession = async () => {
           } else {
             console.log('Token da API válido, configurando sessão Supabase');
             
-            // Forçar definição do header Authorization para todas as requisições
-            supabase.rest.headers['Authorization'] = `Bearer ${sessionData.access_token}`;
+            // O token será aplicado automaticamente pelo setSession abaixo
+            // Não precisamos definir headers manualmente
             
             // Tentar definir a sessão no cliente Supabase
             const { data, error } = await supabase.auth.setSession({
@@ -201,8 +201,8 @@ export const checkAndRestoreSession = async () => {
               return data.session;
             }
           } else {
-            // Forçar definição do header Authorization para todas as requisições
-            supabase.rest.headers['Authorization'] = `Bearer ${sessionData.access_token}`;
+            // O token será aplicado automaticamente pelo setSession abaixo
+            // Não precisamos definir headers manualmente
             
             // Tentar definir a sessão no cliente Supabase
             const { data, error } = await supabase.auth.setSession({
@@ -236,8 +236,8 @@ export const checkAndRestoreSession = async () => {
             return null;
           }
           
-          // Forçar definição do header Authorization para todas as requisições
-          supabase.rest.headers['Authorization'] = `Bearer ${sessionData.currentSession.access_token}`;
+          // O token será aplicado automaticamente pelo setSession abaixo
+          // Não precisamos definir headers manualmente
           
           const { data, error } = await supabase.auth.setSession({
             access_token: sessionData.currentSession.access_token,
