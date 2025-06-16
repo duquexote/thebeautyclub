@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -50,7 +50,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   };
   
   // Mostra um indicador de carregamento enquanto verifica a autenticação
-  if (loading) {
+  // Verificar se o carregamento está demorando muito tempo
+  const [forceRender, setForceRender] = useState(false);
+  
+  useEffect(() => {
+    // Se o carregamento demorar mais de 3 segundos, forçamos a renderização
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.log('ProtectedRoute - Forçando renderização após timeout');
+        setForceRender(true);
+      }
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [loading]);
+  
+  // Se estiver carregando e ainda não forçamos a renderização
+  if (loading && !forceRender) {
     return <div className="flex justify-center items-center h-screen">Carregando...</div>;
   }
   
