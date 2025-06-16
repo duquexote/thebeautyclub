@@ -18,15 +18,30 @@ export default function AdminProdutos() {
   async function fetchProdutos() {
     try {
       setLoading(true);
+      console.log('Iniciando busca de produtos...');
+      
+      // Verificar se o usuário está autenticado
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Status da sessão:', { 
+        hasSession: !!session,
+        accessToken: session?.access_token ? 'Presente' : 'Ausente',
+        userId: session?.user?.id
+      });
+      
+      // Buscar produtos com log detalhado
+      console.log('Executando query na tabela produtos...');
       const { data, error } = await supabase
         .from('produtos')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.error('Erro retornado pelo Supabase:', error);
         throw error;
       }
 
+      console.log('Dados retornados:', { count: data?.length, firstItem: data?.[0] });
+      
       if (data) {
         setProdutos(data);
       }

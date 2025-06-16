@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Usando valores diretos para garantir consistência
-const supabaseUrl = 'https://xpyebyltmtoeljvknkfd.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweWVieWx0bXRvZWxqdmtua2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTYzNDQsImV4cCI6MjA2NTQzMjM0NH0.1Uu4v6JHM8F-hxS7_7RIUZUBvHRQMlRO9xZL-lqU-Zw';
+// Usando variáveis de ambiente para maior segurança e flexibilidade
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+// Verificar se as variáveis de ambiente estão definidas
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Variáveis de ambiente do Supabase não estão definidas corretamente!');
+}
 
 // Verificar se estamos em ambiente de desenvolvimento ou produção
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
