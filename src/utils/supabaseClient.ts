@@ -10,6 +10,29 @@ const isDevelopment = window.location.hostname === 'localhost' || window.locatio
 console.log(`Inicializando Supabase em ambiente de ${isDevelopment ? 'desenvolvimento' : 'produção'}`);
 console.log('URL Supabase:', supabaseUrl);
 
+// Função para verificar se há uma sessão existente no localStorage
+const getExistingSession = () => {
+  try {
+    const storedSession = localStorage.getItem('supabase.auth.token');
+    if (storedSession) {
+      const sessionData = JSON.parse(storedSession);
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      // Verificar se a sessão não expirou
+      if (sessionData.expiresAt > currentTime) {
+        console.log('Sessão existente encontrada no localStorage');
+        return sessionData.currentSession;
+      } else {
+        console.log('Sessão existente expirada');
+        localStorage.removeItem('supabase.auth.token');
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao recuperar sessão:', error);
+  }
+  return null;
+};
+
 // Cliente Supabase com opções específicas para melhorar a compatibilidade
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -23,6 +46,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     }
   }
 });
+
+// Tentar restaurar a sessão se existir
+const existingSession = getExistingSession();
+if (existingSession) {
+  supabase.auth.setSession({
+    access_token: existingSession.access_token,
+    refresh_token: existingSession.refresh_token
+  }).then(() => {
+    console.log('Sessão restaurada com sucesso');
+  }).catch(error => {
+    console.error('Erro ao restaurar sessão:', error);
+  });
+}
 
 // Função auxiliar para criar usuários com email confirmado
 export const createUserWithConfirmedEmail = async (email: string, password: string, userData: any) => {

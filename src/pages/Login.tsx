@@ -103,12 +103,24 @@ export default function Login() {
       // Login bem-sucedido via API
       console.log('Login bem-sucedido via API:', data);
       
-      // Definir a sessão no Supabase para manter o estado de autenticação
+      // Definir a sessão no localStorage para manter o estado de autenticação
       if (data?.session) {
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token
-        });
+        // Armazenar a sessão no localStorage para persistência
+        localStorage.setItem('supabase.auth.token', JSON.stringify({
+          currentSession: data.session,
+          expiresAt: Math.floor(Date.now() / 1000) + data.session.expires_in
+        }));
+        
+        // Tentar definir a sessão no cliente Supabase
+        try {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+          });
+        } catch (sessionError) {
+          console.warn('Não foi possível definir a sessão no cliente Supabase:', sessionError);
+          // Continuar mesmo se falhar, pois o token está no localStorage
+        }
       }
       
       const state = location.state as { from?: string } | null;
