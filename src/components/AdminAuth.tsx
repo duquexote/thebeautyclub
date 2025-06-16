@@ -45,9 +45,35 @@ const AdminAuth: React.FC<AdminAuthProps> = ({
         
         if (restoredSession) {
           console.log('AdminAuth - Sessão restaurada com sucesso');
-          // A sessão foi restaurada, podemos continuar
-          setLoading(false);
-          return;
+          
+          // Verificar se a sessão está realmente válida fazendo uma requisição de teste
+          const { error: testError } = await supabase.from('produtos').select('count').limit(1);
+          
+          if (testError) {
+            console.error('AdminAuth - Sessão restaurada, mas acesso negado:', testError);
+            if (testError.code === '401') {
+              console.log('AdminAuth - Tentando refresh da sessão...');
+              const { data, error } = await supabase.auth.refreshSession();
+              
+              if (error) {
+                console.error('AdminAuth - Erro ao fazer refresh da sessão:', error);
+                throw new Error('Sessão expirada. Por favor, faça login novamente.');
+              }
+              
+              if (data?.session) {
+                console.log('AdminAuth - Sessão renovada com sucesso');
+                setLoading(false);
+                return;
+              }
+            } else {
+              throw new Error(`Erro ao acessar dados: ${testError.message}`);
+            }
+          } else {
+            // A sessão foi restaurada e está válida
+            console.log('AdminAuth - Sessão válida confirmada');
+            setLoading(false);
+            return;
+          }
         }
 
         // Se chegamos aqui, não foi possível autenticar o usuário

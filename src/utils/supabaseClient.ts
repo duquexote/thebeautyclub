@@ -57,20 +57,26 @@ const getExistingSession = () => {
   return null;
 };
 
-// Função para criar o cliente Supabase com opções adicionais para produção
-const createSupabaseClient = () => {
-  // Verificar se as variáveis de ambiente estão disponíveis
+// Criar o cliente Supabase
+export const createSupabaseClient = () => {
+  // Verificar variáveis de ambiente
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('ERRO CRÍTICO: Variáveis de ambiente do Supabase não estão disponíveis!');
-    // Usar valores padrão apenas para evitar erros de inicialização, mas isso não vai funcionar corretamente
+    console.error('Variáveis de ambiente do Supabase não definidas');
+    console.log('URL:', supabaseUrl || 'indefinida');
+    console.log('Chave anônima:', supabaseAnonKey ? `definida (${supabaseAnonKey.substring(0, 5)}...)` : 'indefinida');
+    
+    // Retornar um cliente mock para evitar erros
     return createClient(
-      'https://xpyebyltmtoeljvknkfd.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweWVieWx0bXRvZWxqdmtua2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTYzNDQsImV4cCI6MjA2NTQzMjM0NH0.1Uu4v6JHM8F-hxS7_7RIUZUBvHRQMlRO9xZL-lqU-Zw',
+      'https://example.com',
+      'example-key',
       {
         auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false
         },
         global: {
           headers: {
@@ -86,11 +92,18 @@ const createSupabaseClient = () => {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      // Não definimos storageKey para usar o padrão do Supabase v2
+      // que é 'sb-{supabaseUrl}-auth-token'
     },
     global: {
       headers: {
-        'X-Client-Info': 'thebeautyclub@1.0.0'
+        'X-Client-Info': 'thebeautyclub-app'
+      }
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
       }
     }
   });
@@ -181,19 +194,36 @@ export const checkApiKey = () => {
   return true;
 };
 
+// Função para tentar restaurar a sessão do localStorage
 export const restoreSession = async () => {
   try {
-    // Verificar se há uma sessão no formato atual do Supabase
+    console.log('Iniciando processo de restauração de sessão...');
+    
+    // 1. Verificar se há uma sessão no formato atual do Supabase
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
     const key = `sb-${supabaseUrl}-auth-token`;
     const storedSession = localStorage.getItem(key);
     
     if (storedSession) {
-      console.log('Encontrada sessão no localStorage, tentando restaurar...');
-      const sessionData = JSON.parse(storedSession);
-      
-      if (sessionData && sessionData.access_token && sessionData.refresh_token) {
-        try {
+      console.log('Encontrada sessão no formato atual do Supabase no localStorage');
+      try {
+        const sessionData = JSON.parse(storedSession);
+        
+        if (sessionData && sessionData.access_token && sessionData.refresh_token) {
+          console.log('Sessão válida encontrada, tentando restaurar...');
+          
+          // Verificar se o token já expirou
+          try {
+            const payload = JSON.parse(atob(sessionData.access_token.split('.')[1]));
+            const now = Math.floor(Date.now() / 1000);
+            
+            if (payload.exp && payload.exp < now) {
+              console.log('Token expirado, tentando refresh...');
+            }
+          } catch (e) {
+            console.log('Não foi possível verificar expiração do token');
+          }
+          
           // Tentar definir a sessão no cliente Supabase
           const { data, error } = await supabase.auth.setSession({
             access_token: sessionData.access_token,
@@ -202,17 +232,77 @@ export const restoreSession = async () => {
           
           if (error) {
             console.error('Erro ao restaurar sessão do localStorage:', error);
-            return null;
+            // Tentar refresh token se for erro de token expirado
+            if (error.message.includes('expired')) {
+              console.log('Tentando refresh token...');
+              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+              
+              if (refreshError) {
+                console.error('Erro ao fazer refresh do token:', refreshError);
+              } else if (refreshData?.session) {
+                console.log('Sessão renovada com sucesso via refresh token');
+                return refreshData.session;
+              }
+            }
+          } else if (data?.session) {
+            console.log('Sessão restaurada com sucesso do localStorage');
+            return data.session;
           }
-          
-          console.log('Sessão restaurada com sucesso do localStorage');
-          return data.session;
-        } catch (error) {
-          console.error('Erro ao restaurar sessão:', error);
         }
+      } catch (error) {
+        console.error('Erro ao processar sessão do localStorage:', error);
       }
     }
     
+    // 2. Verificar formato legado (apenas para compatibilidade)
+    const legacySession = localStorage.getItem('supabase.auth.token');
+    if (legacySession) {
+      console.log('Encontrada sessão no formato legado, tentando migrar...');
+      try {
+        const sessionData = JSON.parse(legacySession);
+        if (sessionData?.currentSession?.access_token && sessionData?.currentSession?.refresh_token) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: sessionData.currentSession.access_token,
+            refresh_token: sessionData.currentSession.refresh_token
+          });
+          
+          if (error) {
+            console.error('Erro ao restaurar sessão legada:', error);
+          } else if (data?.session) {
+            console.log('Sessão legada migrada com sucesso');
+            return data.session;
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao processar sessão legada:', error);
+      }
+    }
+    
+    // 3. Verificar formato customizado usado pelo login via API
+    const apiSession = localStorage.getItem('auth_session');
+    if (apiSession) {
+      console.log('Encontrada sessão de login via API, tentando restaurar...');
+      try {
+        const sessionData = JSON.parse(apiSession);
+        if (sessionData?.access_token && sessionData?.refresh_token) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: sessionData.access_token,
+            refresh_token: sessionData.refresh_token
+          });
+          
+          if (error) {
+            console.error('Erro ao restaurar sessão da API:', error);
+          } else if (data?.session) {
+            console.log('Sessão da API restaurada com sucesso');
+            return data.session;
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao processar sessão da API:', error);
+      }
+    }
+    
+    console.log('Não foi possível restaurar nenhuma sessão');
     return null;
   } catch (error) {
     console.error('Erro ao tentar restaurar sessão:', error);

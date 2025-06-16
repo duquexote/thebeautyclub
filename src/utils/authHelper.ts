@@ -83,16 +83,43 @@ export const checkSupabaseConfig = () => {
 };
 
 /**
+ * Verifica se um token JWT está expirado
+ */
+export const isTokenExpired = (token: string): boolean => {
+  try {
+    // Decodificar o token JWT (formato: header.payload.signature)
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Verificar se o token tem um timestamp de expiração
+    if (!payload.exp) return true;
+    
+    // Comparar com o timestamp atual (em segundos)
+    const now = Math.floor(Date.now() / 1000);
+    return payload.exp < now;
+  } catch (error) {
+    console.error('Erro ao verificar expiração do token:', error);
+    return true; // Se houver erro, considerar expirado por segurança
+  }
+};
+
+/**
  * Verifica e restaura a sessão do Supabase a partir do localStorage
  * Tenta diferentes formatos de sessão armazenados
  */
 export const checkAndRestoreSession = async () => {
   try {
+    console.log('Verificando e tentando restaurar sessão...');
+    
     // Primeiro, verificar se já existe uma sessão ativa no Supabase
     const { data: sessionData } = await supabase.auth.getSession();
     if (sessionData?.session) {
       console.log('Sessão ativa encontrada no Supabase');
-      return { session: sessionData.session, source: 'supabase' };
+      
+      // Verificar se o token não está expirado
+      if (!isTokenExpired(sessionData.session.access_token)) {
+        return { session: sessionData.session, source: 'supabase' };
+      } else {
+        console.log('Sessão encontrada, mas token expirado. Tentando refresh...');
+      }
     }
     
     // Se não houver sessão ativa, tentar restaurar do localStorage
