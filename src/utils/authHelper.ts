@@ -162,16 +162,25 @@ export const checkAndRestoreSession = async () => {
       // Verificar se o token está expirado
       if (isTokenExpired(session.access_token)) {
         console.log('Token expirado, tentando refresh...');
-        const { data, error } = await supabase.auth.refreshSession();
         
-        if (error) {
-          console.error('Erro ao fazer refresh do token:', error);
+        // Usar o refresh token da sessão atual
+        if (session.refresh_token) {
+          const { data, error } = await supabase.auth.refreshSession({
+            refresh_token: session.refresh_token
+          });
+          
+          if (error) {
+            console.error('Erro ao fazer refresh do token:', error);
+            return null;
+          }
+          
+          if (data?.session) {
+            console.log('Sessão renovada com sucesso');
+            return data.session;
+          }
+        } else {
+          console.error('Refresh token não encontrado na sessão');
           return null;
-        }
-        
-        if (data?.session) {
-          console.log('Sessão renovada com sucesso');
-          return data.session;
         }
       } else {
         return session;

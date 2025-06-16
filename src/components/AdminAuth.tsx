@@ -53,17 +53,30 @@ const AdminAuth: React.FC<AdminAuthProps> = ({
             console.error('AdminAuth - Sessão restaurada, mas acesso negado:', testError);
             if (testError.code === '401') {
               console.log('AdminAuth - Tentando refresh da sessão...');
-              const { data, error } = await supabase.auth.refreshSession();
               
-              if (error) {
-                console.error('AdminAuth - Erro ao fazer refresh da sessão:', error);
-                throw new Error('Sessão expirada. Por favor, faça login novamente.');
-              }
+              // Obter a sessão atual
+              const { data: sessionData } = await supabase.auth.getSession();
+              const currentSession = sessionData?.session;
               
-              if (data?.session) {
-                console.log('AdminAuth - Sessão renovada com sucesso');
-                setLoading(false);
-                return;
+              if (currentSession?.refresh_token) {
+                console.log('AdminAuth - Refresh token encontrado, tentando renovar sessão');
+                const { data, error } = await supabase.auth.refreshSession({
+                  refresh_token: currentSession.refresh_token
+                });
+                
+                if (error) {
+                  console.error('AdminAuth - Erro ao fazer refresh da sessão:', error);
+                  throw new Error('Sessão expirada. Por favor, faça login novamente.');
+                }
+                
+                if (data?.session) {
+                  console.log('AdminAuth - Sessão renovada com sucesso');
+                  setLoading(false);
+                  return;
+                }
+              } else {
+                console.error('AdminAuth - Refresh token não encontrado');
+                throw new Error('Sessão inválida. Por favor, faça login novamente.');
               }
             } else {
               throw new Error(`Erro ao acessar dados: ${testError.message}`);

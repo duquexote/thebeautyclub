@@ -32,11 +32,16 @@ export default function Produtos() {
       // Abordagem alternativa: fazer uma requisição fetch direta para a API REST do Supabase
       // Isso evita problemas com o cliente Supabase e garante que usamos a chave correta
       
-      // Usar a chave anônima correta obtida diretamente do Supabase
-      // Esta é apenas uma solução temporária para diagnosticar o problema
-      const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhweWVieWx0bXRvZWxqdmtua2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTYzNDQsImV4cCI6MjA2NTQzMjM0NH0.PkF7Kp_EiAF6QbhlKamOtKSG_Z03HZwQ_pUbxXoLOwo';
+      // Usar a variável de ambiente para a chave anônima
+      const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      console.log('Tentando acessar com chave fixa');
+      // Verificar se a chave está disponível
+      if (!ANON_KEY) {
+        console.error('Chave anônima não encontrada nas variáveis de ambiente');
+        throw new Error('Configuração incompleta. Contate o administrador.');
+      }
+      
+      console.log('Tentando acessar com chave anônima da variável de ambiente');
       
       try {
         // Não usamos timestamp na URL para evitar erro de parsing

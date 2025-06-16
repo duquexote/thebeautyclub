@@ -19,7 +19,16 @@ function ProdutosContent() {
   async function fetchProdutos() {
     try {
       setLoading(true);
-      console.log('Iniciando busca de produtos...');
+      console.log('Iniciando busca de produtos na área administrativa...');
+      
+      // Verificar se temos uma sessão válida
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.access_token) {
+        console.error('Sessão não encontrada ou token inválido');
+        throw new Error('Sessão expirada. Por favor, faça login novamente.');
+      }
+      
+      console.log('Sessão válida encontrada, token disponível');
       
       // Buscar produtos com log detalhado
       console.log('Executando query na tabela produtos...');
@@ -47,51 +56,69 @@ function ProdutosContent() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm('Tem certeza que deseja excluir este produto?')) {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) {
       return;
     }
-
+    
+    setLoading(true);
+    
     try {
-      setLoading(true);
+      // Verificar se temos uma sessão válida
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.access_token) {
+        console.error('Sessão não encontrada ou token inválido ao tentar excluir produto');
+        throw new Error('Sessão expirada. Por favor, faça login novamente.');
+      }
       
-      // Primeiro verificar se o produto tem imagem para excluir
-      const { data: produto } = await supabase
+      console.log('Sessão válida encontrada para exclusão de produto');
+      
+      // Primeiro, buscar o produto para obter o caminho da imagem
+      const { data: produto, error: fetchError } = await supabase
         .from('produtos')
         .select('imagem')
         .eq('id', id)
         .single();
-      
+
+      if (fetchError) {
+        console.error('Erro ao buscar produto para exclusão:', fetchError);
+        throw fetchError;
+      }
+
+      // Se houver uma imagem, excluí-la do storage
+      if (produto?.imagem) {
+        const imagePath = produto.imagem.split('/').pop();
+        if (imagePath) {
+          console.log('Excluindo imagem do storage:', imagePath);
+          const { error: storageError } = await supabase.storage
+            .from('produtos')
+            .remove([imagePath]);
+
+          if (storageError) {
+            console.error('Erro ao excluir imagem:', storageError);
+            // Continuar mesmo com erro na exclusão da imagem
+          } else {
+            console.log('Imagem excluída com sucesso');
+          }
+        }
+      }
+
       // Excluir o produto
+      console.log('Excluindo produto do banco de dados:', id);
       const { error } = await supabase
         .from('produtos')
         .delete()
         .eq('id', id);
 
       if (error) {
+        console.error('Erro ao excluir produto do banco:', error);
         throw error;
       }
 
-      // Se o produto tinha uma imagem no Storage, tentar excluí-la
-      if (produto && produto.imagem) {
-        try {
-          // Extrair o nome do arquivo da URL
-          const url = new URL(produto.imagem);
-          const pathname = url.pathname;
-          const fileName = pathname.split('/').pop();
-          
-          if (fileName) {
-            await supabase.storage
-              .from('produtos')
-              .remove([fileName]);
-          }
-        } catch (imageError) {
-          console.error('Erro ao excluir imagem:', imageError);
-          // Não interromper o fluxo se a exclusão da imagem falhar
-        }
-      }
-
+      console.log('Produto excluído com sucesso');
+      
       // Atualizar a lista de produtos
       setProdutos(produtos.filter(p => p.id !== id));
+      
       setMessage({ text: 'Produto excluído com sucesso!', type: 'success' });
       
       // Limpar a mensagem após 3 segundos
@@ -109,7 +136,17 @@ function ProdutosContent() {
 
   async function handleToggleAtivo(id: string, ativoAtual: boolean | undefined) {
     try {
+      // Verificar se temos uma sessão válida
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.access_token) {
+        console.error('Sessão não encontrada ou token inválido ao tentar alterar status do produto');
+        throw new Error('Sessão expirada. Por favor, faça login novamente.');
+      }
+      
+      console.log('Sessão válida encontrada para alteração de status do produto');
+      
       const novoStatus = !ativoAtual;
+      console.log(`Alterando status do produto ${id} para ${novoStatus ? 'ativo' : 'inativo'}`);
       
       const { error } = await supabase
         .from('produtos')
@@ -117,9 +154,12 @@ function ProdutosContent() {
         .eq('id', id);
 
       if (error) {
+        console.error('Erro ao atualizar status do produto:', error);
         throw error;
       }
 
+      console.log('Status do produto atualizado com sucesso');
+      
       // Atualizar a lista de produtos
       setProdutos(produtos.map(p => 
         p.id === id ? { ...p, ativo: novoStatus } : p
