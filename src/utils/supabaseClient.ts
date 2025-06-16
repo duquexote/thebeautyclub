@@ -3,10 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 // Usando variáveis de ambiente para maior segurança e flexibilidade
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY || '';
 
 // Verificar se as variáveis de ambiente estão definidas
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Variáveis de ambiente do Supabase não estão definidas corretamente!');
+}
+
+// Verificar se a chave de serviço está definida
+if (!supabaseServiceKey) {
+  console.warn('Chave de serviço do Supabase não está definida. Funcionalidades administrativas podem não funcionar corretamente.');
 }
 
 // Verificar se estamos em ambiente de desenvolvimento ou produção
@@ -38,7 +44,7 @@ const getExistingSession = () => {
   return null;
 };
 
-// Cliente Supabase com opções específicas para melhorar a compatibilidade
+// Cliente Supabase padrão com chave anônima para usuários normais
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -48,6 +54,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'X-Client-Info': 'thebeautyclub@1.0.0'
+    }
+  }
+});
+
+// Cliente Supabase administrativo com chave de serviço para acesso privilegiado
+// ATENÇÃO: Este cliente tem acesso completo ao banco de dados e deve ser usado apenas
+// em componentes administrativos que exigem permissões elevadas
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'thebeautyclub-admin@1.0.0'
     }
   }
 });

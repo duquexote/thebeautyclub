@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../utils/supabaseClient';
+import { supabase, supabaseAdmin } from '../utils/supabaseClient';
 import { Produto } from '../types/Produto';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 
@@ -28,9 +28,9 @@ export default function AdminProdutos() {
         userId: session?.user?.id
       });
       
-      // Buscar produtos com log detalhado
-      console.log('Executando query na tabela produtos...');
-      const { data, error } = await supabase
+      // Usando cliente administrativo para acessar dados com permissões completas
+      console.log('Executando query na tabela produtos com cliente administrativo...');
+      const { data, error } = await supabaseAdmin
         .from('produtos')
         .select('*')
         .order('created_at', { ascending: false });
@@ -62,14 +62,14 @@ export default function AdminProdutos() {
       setLoading(true);
       
       // Primeiro verificar se o produto tem imagem para excluir
-      const { data: produto } = await supabase
+      const { data: produto } = await supabaseAdmin
         .from('produtos')
         .select('imagem')
         .eq('id', id)
         .single();
       
       // Excluir o produto
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('produtos')
         .delete()
         .eq('id', id);
@@ -87,7 +87,7 @@ export default function AdminProdutos() {
           const fileName = pathname.split('/').pop();
           
           if (fileName) {
-            await supabase.storage
+            await supabaseAdmin.storage
               .from('produtos')
               .remove([fileName]);
           }
@@ -118,7 +118,7 @@ export default function AdminProdutos() {
     try {
       const novoStatus = !ativoAtual;
       
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('produtos')
         .update({ ativo: novoStatus })
         .eq('id', id);
