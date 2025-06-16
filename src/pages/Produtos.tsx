@@ -1,59 +1,72 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../utils/supabaseClient';
+import { Link } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
 import { Produto } from '../types/Produto';
-import { useAuth } from '../contexts/AuthContext';
 
 export default function Produtos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Se não estiver autenticado, redirecionar para login
-    if (isAuthenticated === false) {
-      navigate('/login', { state: { from: '/produtos', message: 'Você precisa estar logado para acessar os produtos.' } });
-    } else if (isAuthenticated === true) {
-      // Se estiver autenticado, buscar produtos
-      fetchProdutos();
-    }
-    // isAuthenticated pode ser null inicialmente, nesse caso não fazemos nada até que o valor seja determinado
-  }, [isAuthenticated, navigate]);
-  
-  // Não precisamos mais do listener de autenticação, pois o contexto já cuida disso
-  
+    // Carregar produtos assim que o componente for montado
+    fetchProdutos();
+  }, []);
+
   const fetchProdutos = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      // Criar uma nova instância do cliente Supabase para garantir que estamos usando a chave correta
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Variáveis de ambiente do Supabase não configuradas');
+      }
+
+      console.log('Buscando produtos com URL:', supabaseUrl);
+      console.log('Chave anônima disponível:', supabaseAnonKey ? 'Sim' : 'Não');
+
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+      // Verificar se a tabela produtos tem RLS habilitada e se há uma política para leitura pública
       const { data, error } = await supabase
         .from('produtos')
         .select('*')
+        .eq('ativo', true) // Apenas produtos ativos
         .order('created_at', { ascending: false });
 
       if (error) {
-        throw error;
+        console.error('Erro detalhado:', error);
+        throw new Error(`Erro ao buscar produtos: ${error.message}`);
       }
 
       if (data) {
+        console.log(`${data.length} produtos carregados com sucesso`);
         setProdutos(data);
+      } else {
+        setProdutos([]);
       }
-    } catch (error) {
-      console.error('Erro ao buscar produtos:', error);
+    } catch (err: any) {
+      console.error('Erro ao buscar produtos:', err);
+      setError(err.message || 'Erro ao carregar produtos');
     } finally {
       setLoading(false);
     }
   };
 
-  // Renderizar conteúdo apenas se o usuário estiver autenticado
-  if (isAuthenticated === false) {
-    return null; // Não renderiza nada se não estiver autenticado (será redirecionado)
-  }
-  
   return (
     <div className="container mx-auto px-4 py-8 pt-24">
       <h1 className="text-3xl font-bold text-center mb-8 text-pink-600">Nossos Produtos</h1>
-      
+
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-3 flex items-center justify-center">
+          <p className="text-red-700 text-sm">⚠️ {error}</p>
+        </div>
+      )}
+
       {/* Indicador de usuário logado */}
       <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-3 flex items-center justify-center">
         <p className="text-green-700 text-sm">✓ Você está logado e tem acesso a todos os produtos exclusivos para sócias</p>
