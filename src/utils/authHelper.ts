@@ -107,77 +107,158 @@ export const isTokenExpired = (token: string): boolean => {
  */
 export const checkAndRestoreSession = async () => {
   try {
-    console.log('Verificando e tentando restaurar sessão...');
+    console.log('Iniciando verificação e restauração de sessão...');
     
-    // Primeiro, verificar se já existe uma sessão ativa no Supabase
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (sessionData?.session) {
+    // 0. Verificar sessão de login via API (prioridade máxima)
+    const apiSession = localStorage.getItem('auth_session');
+    if (apiSession) {
+      console.log('Sessão de login via API encontrada, tentando usar...');
+      try {
+        const sessionData = JSON.parse(apiSession);
+        if (sessionData?.access_token && sessionData?.refresh_token) {
+          // Verificar se o token está expirado
+          if (isTokenExpired(sessionData.access_token)) {
+            console.log('Token da API expirado, removendo sessão inválida');
+            localStorage.removeItem('auth_session');
+          } else {
+            console.log('Token da API válido, configurando sessão Supabase');
+            
+            // Forçar definição do header Authorization para todas as requisições
+            supabase.rest.headers['Authorization'] = `Bearer ${sessionData.access_token}`;
+            
+            // Tentar definir a sessão no cliente Supabase
+            const { data, error } = await supabase.auth.setSession({
+              access_token: sessionData.access_token,
+              refresh_token: sessionData.refresh_token
+            });
+            
+            if (error) {
+              console.error('Erro ao configurar sessão da API:', error);
+              // Tentar usar o token mesmo com erro na configuração
+              console.log('Tentando usar token da API diretamente');
+              return {
+                access_token: sessionData.access_token,
+                refresh_token: sessionData.refresh_token,
+                user: { id: 'api-user' }, // Usuário mínimo para satisfazer a interface
+                expires_at: 0 // Forçar refresh na próxima vez
+              };
+            } else if (data?.session) {
+              console.log('Sessão da API configurada com sucesso no Supabase');
+              return data.session;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao processar sessão da API:', error);
+      }
+    }
+    
+    // 1. Verificar se há uma sessão ativa no Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
       console.log('Sessão ativa encontrada no Supabase');
       
-      // Verificar se o token não está expirado
-      if (!isTokenExpired(sessionData.session.access_token)) {
-        return { session: sessionData.session, source: 'supabase' };
+      // Verificar se o token está expirado
+      if (isTokenExpired(session.access_token)) {
+        console.log('Token expirado, tentando refresh...');
+        const { data, error } = await supabase.auth.refreshSession();
+        
+        if (error) {
+          console.error('Erro ao fazer refresh do token:', error);
+          return null;
+        }
+        
+        if (data?.session) {
+          console.log('Sessão renovada com sucesso');
+          return data.session;
+        }
       } else {
-        console.log('Sessão encontrada, mas token expirado. Tentando refresh...');
+        return session;
       }
     }
     
-    // Se não houver sessão ativa, tentar restaurar do localStorage
-    console.log('Tentando restaurar sessão do localStorage...');
+    // 2. Tentar restaurar sessão do localStorage (formato atual)
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+    const key = `sb-${supabaseUrl}-auth-token`;
+    const storedSession = localStorage.getItem(key);
     
-    // Verificar formato atual do Supabase
-    const currentSession = getCurrentSessionFromStorage();
-    if (currentSession?.access_token && currentSession?.refresh_token) {
+    if (storedSession) {
       console.log('Sessão encontrada no localStorage (formato atual)');
       try {
-        const { data, error } = await supabase.auth.setSession({
-          access_token: currentSession.access_token,
-          refresh_token: currentSession.refresh_token
-        });
+        const sessionData = JSON.parse(storedSession);
         
-        if (error) {
-          console.error('Erro ao restaurar sessão do localStorage:', error);
-          return { session: null, source: null, error };
-        }
-        
-        if (data?.session) {
-          console.log('Sessão restaurada com sucesso do localStorage');
-          return { session: data.session, source: 'localStorage' };
+        if (sessionData && sessionData.access_token && sessionData.refresh_token) {
+          // Verificar se o token está expirado
+          if (isTokenExpired(sessionData.access_token)) {
+            console.log('Token do localStorage expirado, tentando refresh...');
+            const { data, error } = await supabase.auth.refreshSession();
+            
+            if (error) {
+              console.error('Erro ao fazer refresh do token do localStorage:', error);
+            } else if (data?.session) {
+              console.log('Sessão do localStorage renovada com sucesso');
+              return data.session;
+            }
+          } else {
+            // Forçar definição do header Authorization para todas as requisições
+            supabase.rest.headers['Authorization'] = `Bearer ${sessionData.access_token}`;
+            
+            // Tentar definir a sessão no cliente Supabase
+            const { data, error } = await supabase.auth.setSession({
+              access_token: sessionData.access_token,
+              refresh_token: sessionData.refresh_token
+            });
+            
+            if (error) {
+              console.error('Erro ao restaurar sessão do localStorage:', error);
+            } else if (data?.session) {
+              console.log('Sessão restaurada com sucesso (formato atual)');
+              return data.session;
+            }
+          }
         }
       } catch (error) {
-        console.error('Erro ao restaurar sessão do localStorage:', error);
+        console.error('Erro ao processar sessão do localStorage:', error);
       }
     }
     
-    // Verificar formato antigo
-    const legacySession = getLegacySessionFromStorage();
-    if (legacySession?.access_token && legacySession?.refresh_token) {
+    // 3. Tentar restaurar sessão do localStorage (formato antigo)
+    const legacySession = localStorage.getItem('supabase.auth.token');
+    if (legacySession) {
       console.log('Sessão encontrada no localStorage (formato antigo)');
       try {
-        const { data, error } = await supabase.auth.setSession({
-          access_token: legacySession.access_token,
-          refresh_token: legacySession.refresh_token
-        });
-        
-        if (error) {
-          console.error('Erro ao restaurar sessão antiga do localStorage:', error);
-          return { session: null, source: null, error };
-        }
-        
-        if (data?.session) {
-          console.log('Sessão antiga restaurada com sucesso do localStorage');
-          return { session: data.session, source: 'legacyStorage' };
+        const sessionData = JSON.parse(legacySession);
+        if (sessionData?.currentSession?.access_token && sessionData?.currentSession?.refresh_token) {
+          // Verificar se o token está expirado
+          if (isTokenExpired(sessionData.currentSession.access_token)) {
+            console.log('Token legado expirado');
+            return null;
+          }
+          
+          // Forçar definição do header Authorization para todas as requisições
+          supabase.rest.headers['Authorization'] = `Bearer ${sessionData.currentSession.access_token}`;
+          
+          const { data, error } = await supabase.auth.setSession({
+            access_token: sessionData.currentSession.access_token,
+            refresh_token: sessionData.currentSession.refresh_token
+          });
+          
+          if (error) {
+            console.error('Erro ao restaurar sessão legada:', error);
+          } else if (data?.session) {
+            console.log('Sessão restaurada com sucesso (formato antigo)');
+            return data.session;
+          }
         }
       } catch (error) {
-        console.error('Erro ao restaurar sessão antiga do localStorage:', error);
+        console.error('Erro ao processar sessão legada:', error);
       }
     }
     
-    // Se chegamos aqui, não foi possível restaurar a sessão
-    console.log('Não foi possível restaurar a sessão');
-    return { session: null, source: null };
+    return null;
   } catch (error) {
-    console.error('Erro ao verificar e restaurar sessão:', error);
-    return { session: null, source: null, error };
+    console.error('Erro ao verificar/restaurar sessão:', error);
+    return null;
   }
 };

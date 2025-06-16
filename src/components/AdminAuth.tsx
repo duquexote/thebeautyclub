@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabaseClient';
-import { restoreSession } from '../utils/supabaseClient';
+import { checkAndRestoreSession } from '../utils/authHelper';
 
 interface AdminAuthProps {
   children: React.ReactNode;
@@ -39,9 +39,9 @@ const AdminAuth: React.FC<AdminAuthProps> = ({
           return;
         }
 
-        // Tentar restaurar a sessão do localStorage
+        // Tentar restaurar a sessão usando a função melhorada
         console.log('AdminAuth - Tentando restaurar sessão...');
-        const restoredSession = await restoreSession();
+        const restoredSession = await checkAndRestoreSession();
         
         if (restoredSession) {
           console.log('AdminAuth - Sessão restaurada com sucesso');
@@ -77,16 +77,12 @@ const AdminAuth: React.FC<AdminAuthProps> = ({
         }
 
         // Se chegamos aqui, não foi possível autenticar o usuário
-        console.log('AdminAuth - Não foi possível autenticar, redirecionando...');
-        navigate(redirectTo, { 
-          state: { 
-            from: window.location.pathname,
-            message: 'Você precisa estar logado para acessar esta página.'
-          } 
-        });
-      } catch (err: any) {
-        console.error('AdminAuth - Erro ao verificar autenticação:', err);
-        setError(err.message || 'Erro ao verificar autenticação');
+        console.log('AdminAuth - Não foi possível autenticar o usuário');
+        // Redirecionar para a página de login
+        navigate('/admin/login');
+      } catch (error: any) { 
+        console.error('AdminAuth - Erro ao verificar autenticação:', error);
+        setError(error.message || 'Erro ao verificar autenticação');
         setLoading(false);
       }
     };
