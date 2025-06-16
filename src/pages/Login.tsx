@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../utils/supabaseClient';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { LoginData } from '../types';
 
 export default function Login() {
@@ -29,41 +30,8 @@ export default function Login() {
     });
   };
 
-  // Função para fazer login usando a API serverless
-  const loginViaApi = async (email: string, password: string) => {
-    try {
-      // Determinar a URL da API com base no ambiente
-      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const apiUrl = isDevelopment 
-        ? 'http://localhost:3000/api/auth' // URL local para desenvolvimento
-        : '/api/auth'; // URL relativa para produção
-      
-      console.log(`Usando API de autenticação em: ${apiUrl}`);
-      
-      // Chamada para a API serverless
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          action: 'login'
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao fazer login');
-      }
-      
-      const data = await response.json();
-      return { data, error: null };
-    } catch (error: any) {
-      return { data: null, error };
-    }
-  };
+  // Usar o contexto de autenticação
+  const { signIn } = useAuth();
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,56 +41,17 @@ export default function Login() {
     try {
       console.log('Tentando fazer login com:', { email: formData.email });
       
-      // Primeiro, tentar login via API serverless
-      const { data, error } = await loginViaApi(formData.email, formData.senha);
+      // Usar o método de login do contexto de autenticação
+      const { data, error } = await signIn(formData.email, formData.senha);
       
-      // Se houver erro na API, tentar diretamente com Supabase como fallback
       if (error) {
-        console.log('Erro na API, tentando diretamente com Supabase:', error);
-        
-        // Verificar se o cliente Supabase está inicializado corretamente
-        if (!supabase || !supabase.auth) {
-          throw new Error('Cliente Supabase não inicializado corretamente');
-        }
-        
-        // Tentativa de login direta com Supabase
-        const supabaseResult = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.senha
-        });
-        
-        if (supabaseResult.error) throw supabaseResult.error;
-        
-        // Login bem-sucedido via Supabase
-        console.log('Login bem-sucedido via Supabase:', supabaseResult.data);
-        const state = location.state as { from?: string } | null;
-        navigate(state?.from || '/produtos');
-        return;
+        throw error;
       }
       
-      // Login bem-sucedido via API
-      console.log('Login bem-sucedido via API:', data);
+      // Login bem-sucedido
+      console.log('Login bem-sucedido:', data);
       
-      // Definir a sessão no localStorage para manter o estado de autenticação
-      if (data?.session) {
-        // Armazenar a sessão no localStorage para persistência
-        localStorage.setItem('supabase.auth.token', JSON.stringify({
-          currentSession: data.session,
-          expiresAt: Math.floor(Date.now() / 1000) + data.session.expires_in
-        }));
-        
-        // Tentar definir a sessão no cliente Supabase
-        try {
-          await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token
-          });
-        } catch (sessionError) {
-          console.warn('Não foi possível definir a sessão no cliente Supabase:', sessionError);
-          // Continuar mesmo se falhar, pois o token está no localStorage
-        }
-      }
-      
+      // Redirecionar para a página anterior ou produtos
       const state = location.state as { from?: string } | null;
       navigate(state?.from || '/produtos');
     } catch (error: any) {

@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Menu, X, User, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../utils/supabaseClient";
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [userName, setUserName] = useState<string>('');
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Usar o contexto de autenticação
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,19 +27,15 @@ const Navbar: React.FC = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   
-  // Verificar se o usuário está logado
+  // Buscar o nome do usuário quando ele estiver autenticado
   useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUser(data.user);
-        
-        // Buscar o nome do usuário na tabela socias
+    const fetchUserName = async () => {
+      if (user?.id) {
         try {
           const { data: sociaData } = await supabase
             .from('socias')
             .select('nome')
-            .eq('id', data.user.id)
+            .eq('id', user.id)
             .single();
           
           if (sociaData?.nome) {
@@ -47,48 +46,18 @@ const Navbar: React.FC = () => {
         } catch (error) {
           console.error('Erro ao buscar dados do usuário:', error);
         }
-      }
-    };
-    
-    checkUser();
-    
-    // Configurar listener para mudanças na autenticação
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user);
-        // Buscar nome do usuário quando fizer login
-        const fetchUserName = async () => {
-          try {
-            const { data: sociaData } = await supabase
-              .from('socias')
-              .select('nome')
-              .eq('id', session.user.id)
-              .single();
-            
-            if (sociaData?.nome) {
-              const primeiroNome = sociaData.nome.split(' ')[0];
-              setUserName(primeiroNome);
-            }
-          } catch (error) {
-            console.error('Erro ao buscar dados do usuário:', error);
-          }
-        };
-        fetchUserName();
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
+      } else {
         setUserName('');
       }
-    });
-    
-    return () => {
-      authListener?.subscription.unsubscribe();
     };
-  }, []);
+    
+    fetchUserName();
+  }, [user]);
   
   // Função para fazer logout
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
       navigate('/');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
