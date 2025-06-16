@@ -38,6 +38,7 @@ const loginViaApi = async (email: string, password: string) => {
       : '/api/auth'; // URL relativa para produção
     
     console.log(`Usando API de autenticação em: ${apiUrl}`);
+    console.log(`Ambiente: ${isDevelopment ? 'Desenvolvimento' : 'Produção'}`);
     
     // Chamada para a API serverless
     const response = await fetch(apiUrl, {
@@ -54,12 +55,19 @@ const loginViaApi = async (email: string, password: string) => {
     
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('Erro na resposta da API:', errorData);
       throw new Error(errorData.error || 'Erro ao fazer login');
     }
     
     const data = await response.json();
+    console.log('Resposta da API de login:', { 
+      success: true, 
+      hasUser: !!data.user, 
+      hasSession: !!data.session 
+    });
     return { data, error: null };
   } catch (error: any) {
+    console.error('Erro ao chamar API de login:', error);
     return { data: null, error };
   }
 };
@@ -122,25 +130,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Login bem-sucedido via API
       console.log('Login bem-sucedido via API:', data);
       
-      // Armazenar a sessão no localStorage para persistência
+      // Armazenar a sessão completa no localStorage
       if (data?.session) {
-        localStorage.setItem('supabase.auth.token', JSON.stringify({
-          currentSession: data.session,
-          expiresAt: Math.floor(Date.now() / 1000) + data.session.expires_in
-        }));
-        
-        // Tentar definir a sessão no cliente Supabase
         try {
+          // Formato personalizado para nossa aplicação
+          localStorage.setItem('supabase.auth.token', JSON.stringify({
+            currentSession: data.session,
+            expiresAt: Math.floor(Date.now() / 1000) + data.session.expires_in
+          }));
+          
+          // Armazenar no formato que o Supabase espera
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+          const supabaseAuthKey = `sb-${supabaseUrl}-auth-token`;
+          
+          const supabaseSession = {
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_at: Math.floor(Date.now() / 1000) + data.session.expires_in,
+            token_type: 'bearer',
+            provider_token: null,
+            provider_refresh_token: null,
+            user: data.user
+          };
+          
+          localStorage.setItem(supabaseAuthKey, JSON.stringify(supabaseSession));
+          console.log(`Sessão armazenada em localStorage com chave: ${supabaseAuthKey}`);
+          
+          // Tentar definir a sessão no cliente Supabase
           await supabase.auth.setSession({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token
           });
+          
+          // Verificar se a sessão foi definida corretamente
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData?.session) {
+            console.log('Sessão definida com sucesso no cliente Supabase');
+          } else {
+            console.warn('Sessão não foi definida corretamente no cliente Supabase');
+          }
         } catch (sessionError) {
-          console.warn('Não foi possível definir a sessão no cliente Supabase:', sessionError);
+          console.error('Erro ao configurar sessão:', sessionError);
         }
         
+        // Atualizar estado do contexto
         setUser(data.user);
         setSession(data.session);
+      } else {
+        console.warn('Login bem-sucedido, mas sem dados de sessão');
       }
       
       return { data, error: null };
@@ -243,7 +280,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     signIn,
     signOut,
-    isAuthenticated: !!user
+    // Consideramos autenticado se tiver um usuário OU uma sessão armazenada no localStorage
+    isAuthenticated: !!user || !!getExistingSession()
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

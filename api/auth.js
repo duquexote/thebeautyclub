@@ -5,6 +5,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL || 'https://xpyebyltmtoeljvknkfd.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
+// Verificar se a chave de serviço está definida
+if (!supabaseServiceKey) {
+  console.error('ERRO: SUPABASE_SERVICE_KEY não está definida no ambiente!');
+}
+
+console.log('API Auth - URL Supabase:', supabaseUrl);
+console.log('API Auth - Chave de serviço definida:', !!supabaseServiceKey);
+
 // Cliente Supabase com chave de serviço
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

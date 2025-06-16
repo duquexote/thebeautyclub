@@ -18,20 +18,59 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // Componente para proteger rotas que exigem autenticação
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user, session } = useAuth();
   const location = useLocation();
+  
+  // Log para diagnóstico
+  console.log('ProtectedRoute - Estado de autenticação:', { 
+    isAuthenticated, 
+    loading, 
+    hasUser: !!user,
+    hasSession: !!session,
+    path: location.pathname 
+  });
+  
+  // Verificar se há uma sessão no localStorage (mesmo que não esteja no contexto ainda)
+  const checkLocalStorageSession = () => {
+    try {
+      // Verificar formato personalizado
+      const storedSession = localStorage.getItem('supabase.auth.token');
+      if (storedSession) return true;
+      
+      // Verificar formato do Supabase
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.split('//')[1];
+      if (supabaseUrl) {
+        const sbSession = localStorage.getItem(`sb-${supabaseUrl}-auth-token`);
+        if (sbSession) return true;
+      }
+    } catch (e) {
+      console.error('Erro ao verificar sessão no localStorage:', e);
+    }
+    return false;
+  };
   
   // Mostra um indicador de carregamento enquanto verifica a autenticação
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Carregando...</div>;
   }
   
+  // Verificar autenticação de todas as formas possíveis
+  const hasLocalSession = checkLocalStorageSession();
+  const isUserAuthenticated = isAuthenticated || !!user || !!session || hasLocalSession;
+  
+  console.log('Status final de autenticação:', { 
+    isUserAuthenticated, 
+    hasLocalSession 
+  });
+  
   // Redireciona para login se não estiver autenticado
-  if (!isAuthenticated) {
+  if (!isUserAuthenticated) {
+    console.log('Redirecionando para login - Usuário não autenticado');
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   
   // Renderiza o conteúdo se estiver autenticado
+  console.log('Usuário autenticado - Renderizando conteúdo protegido');
   return <>{children}</>;
 };
 
