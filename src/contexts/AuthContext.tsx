@@ -156,19 +156,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem(supabaseAuthKey, JSON.stringify(supabaseSession));
           console.log(`Sessão armazenada em localStorage com chave: ${supabaseAuthKey}`);
           
-          // Tentar definir a sessão no cliente Supabase
-          await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token
-          });
+          // Armazenar um flag indicando que o login foi feito via API
+          localStorage.setItem('auth_via_api', 'true');
           
-          // Verificar se a sessão foi definida corretamente
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData?.session) {
-            console.log('Sessão definida com sucesso no cliente Supabase');
-          } else {
-            console.warn('Sessão não foi definida corretamente no cliente Supabase');
-          }
+          // Não tentamos mais definir a sessão no cliente Supabase
+          // pois sabemos que isso vai falhar com erro 401
+          console.log('Login feito via API, não tentando restaurar sessão no Supabase');
         } catch (sessionError) {
           console.error('Erro ao configurar sessão:', sessionError);
         }
@@ -218,71 +211,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
+  // Função para obter a sessão do usuário do localStorage
+  const getUserSessionFromLocalStorage = () => {
+    try {
+      const storedSession = localStorage.getItem('supabase.auth.token');
+      if (storedSession) {
+        const sessionData = JSON.parse(storedSession);
+        return sessionData;
+      }
+    } catch (e) {
+      console.error('Erro ao obter sessão do usuário do localStorage:', e);
+    }
+    return null;
+  };
+
+  // Função para limpar todos os dados de autenticação
+  const clearAllAuthData = () => {
+    localStorage.removeItem('supabase.auth.token');
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+    localStorage.removeItem(`sb-${supabaseUrl}-auth-token`);
+    localStorage.removeItem('auth_via_api');
+  };
+
   // Efeito para verificar autenticação ao carregar
   useEffect(() => {
     const initAuth = async () => {
       setLoading(true);
-      
       try {
-        // Verificar se há uma sessão ativa no Supabase
-        const { data } = await supabase.auth.getSession();
+        // Verificar primeiro se o login foi feito via API
+        const isAuthViaApi = localStorage.getItem('auth_via_api') === 'true';
         
-        if (data?.session) {
-          console.log('Sessão ativa encontrada no Supabase');
-          setUser(data.session.user);
-          setSession(data.session);
+        if (isAuthViaApi) {
+          console.log('Login via API detectado, não tentando restaurar sessão do Supabase');
+          // Usar diretamente os dados do localStorage
+          const userSession = getUserSessionFromLocalStorage();
+          if (userSession && userSession.currentSession) {
+            setUser(userSession.currentSession.user);
+            setSession(userSession.currentSession);
+          }
         } else {
-          // Tentar obter sessão do localStorage no formato do Supabase
-          const supabaseSession = getSupabaseSessionFromLocalStorage();
-          
-          if (supabaseSession) {
-            console.log('Sessão encontrada no localStorage, tentando restaurar');
-            
-            // Tentar restaurar a sessão
-            try {
-              await supabase.auth.setSession({
-                access_token: supabaseSession.access_token,
-                refresh_token: supabaseSession.refresh_token
-              });
-              
-              // Verificar se a sessão foi restaurada
-              const { data: refreshedData } = await supabase.auth.getSession();
-              
-              if (refreshedData?.session) {
-                console.log('Sessão restaurada com sucesso');
-                setUser(refreshedData.session.user);
-                setSession(refreshedData.session);
-              } else {
-                console.log('Não foi possível restaurar a sessão via Supabase');
-                
-                // Usar os dados do localStorage diretamente como fallback
-                if (supabaseSession.user) {
-                  console.log('Usando dados de usuário do localStorage como fallback');
-                  setUser(supabaseSession.user);
-                  // Criar uma sessão simples para manter a autenticação
-                  setSession({
-                    access_token: supabaseSession.access_token,
-                    refresh_token: supabaseSession.refresh_token,
-                    user: supabaseSession.user
-                  });
+          // Fluxo normal de restauração de sessão
+          const { data } = await supabase.auth.getSession();
+          if (data?.session) {
+            console.log('Sessão existente encontrada no AuthContext');
+            setUser(data.session.user);
+            setSession(data.session);
+          } else {
+            console.log('Sessão não encontrada no AuthContext, tentando restaurar');
+            const supabaseSession = getSupabaseSessionFromLocalStorage();
+            if (supabaseSession) {
+              console.log('Sessão existente encontrada no localStorage');
+              try {
+                await supabase.auth.setSession({
+                  access_token: supabaseSession.access_token,
+                  refresh_token: supabaseSession.refresh_token
+                });
+                const { data: refreshedData } = await supabase.auth.getSession();
+                if (refreshedData?.session) {
+                  console.log('Sessão restaurada com sucesso');
+                  setUser(refreshedData.session.user);
+                  setSession(refreshedData.session);
                 } else {
-                  // Tentar nossa sessão personalizada
-                  const customSession = getExistingSession();
-                  if (customSession?.currentSession?.user) {
-                    console.log('Usando sessão personalizada como fallback');
-                    setUser(customSession.currentSession.user);
-                    setSession(customSession.currentSession);
+                  console.log('Não foi possível restaurar a sessão');
+                  // Tentar usar os dados do localStorage como fallback
+                  const userSession = getUserSessionFromLocalStorage();
+                  if (userSession && userSession.currentSession) {
+                    setUser(userSession.currentSession.user);
+                    setSession(userSession.currentSession);
                   } else {
-                    // Limpar localStorage se não conseguir restaurar
-                    console.log('Nenhuma sessão válida encontrada');
-                    localStorage.removeItem('supabase.auth.token');
-                    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
-                    localStorage.removeItem(`sb-${supabaseUrl}-auth-token`);
+                    // Limpar localStorage se a sessão não puder ser restaurada
+                    clearAllAuthData();
                   }
                 }
+              } catch (error) {
+                console.error('Erro ao restaurar sessão:', error);
+                // Tentar usar os dados do localStorage como fallback
+                const userSession = getUserSessionFromLocalStorage();
+                if (userSession && userSession.currentSession) {
+                  setUser(userSession.currentSession.user);
+                  setSession(userSession.currentSession);
+                } else {
+                  // Limpar localStorage se a sessão não puder ser restaurada
+                  clearAllAuthData();
+                }
               }
-            } catch (error) {
-              console.error('Erro ao restaurar sessão:', error);
+            } else {
+              // Tentar usar os dados do localStorage como fallback
+              const userSession = getUserSessionFromLocalStorage();
+              if (userSession && userSession.currentSession) {
+                setUser(userSession.currentSession.user);
+                setSession(userSession.currentSession);
+              }
             }
           } else {
             // Verificar nossa sessão personalizada

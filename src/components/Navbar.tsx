@@ -39,7 +39,18 @@ const Navbar: React.FC = () => {
             return;
           }
           
-          // Se não tiver no cache, buscar da API
+          // Verificar se o login foi feito via API - neste caso, não tentamos buscar do Supabase
+          const isAuthViaApi = localStorage.getItem('auth_via_api') === 'true';
+          
+          if (isAuthViaApi && user.email) {
+            console.log('Login via API detectado, usando email como nome de usuário');
+            const emailName = user.email.split('@')[0];
+            setUserName(emailName);
+            localStorage.setItem(`user_name_${user.id}`, emailName);
+            return;
+          }
+          
+          // Se não foi login via API, tentar buscar do Supabase
           const { data: sociaData, error } = await supabase
             .from('socias')
             .select('nome')
