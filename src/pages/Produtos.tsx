@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
 import { Produto } from '../types/Produto';
 
 export default function Produtos() {
@@ -28,20 +27,32 @@ export default function Produtos() {
 
       console.log('Buscando produtos com URL:', supabaseUrl);
       console.log('Chave anônima disponível:', supabaseAnonKey ? 'Sim' : 'Não');
+      console.log('Chave completa para debug:', supabaseAnonKey);
 
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-      // Verificar se a tabela produtos tem RLS habilitada e se há uma política para leitura pública
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('ativo', true) // Apenas produtos ativos
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Erro detalhado:', error);
-        throw new Error(`Erro ao buscar produtos: ${error.message}`);
+      // Abordagem alternativa: fazer uma requisição fetch direta para a API REST do Supabase
+      // Isso evita problemas com o cliente Supabase e garante que usamos a chave correta
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/produtos?select=*&ativo=eq.true&order=created_at.desc`,
+        {
+          method: 'GET',
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Erro na resposta da API:', errorData);
+        throw new Error(`Erro ao buscar produtos: ${response.statusText}`);
       }
+      
+      const data = await response.json();
+
+      // Não precisamos mais verificar error do Supabase, pois estamos usando fetch diretamente
+      console.log(`${data.length} produtos carregados com sucesso`);
 
       if (data) {
         console.log(`${data.length} produtos carregados com sucesso`);
