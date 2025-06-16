@@ -39,9 +39,9 @@ export default function Produtos() {
       console.log('Tentando acessar com chave fixa');
       
       try {
-        // Adiciona um timestamp para evitar cache
-        const timestamp = new Date().getTime();
-        const url = `${supabaseUrl}/rest/v1/produtos?select=*&order=created_at.desc&_t=${timestamp}`;
+        // Não usamos timestamp na URL para evitar erro de parsing
+        // O Supabase interpreta parâmetros adicionais como filtros
+        const url = `${supabaseUrl}/rest/v1/produtos?select=*&ativo=eq.true&order=created_at.desc`;
         
         console.log('URL completa da requisição:', url);
         console.log('Headers da requisição:', {
