@@ -65,14 +65,6 @@ export default function Cadastro() {
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       console.log('Ambiente:', isDevelopment ? 'Desenvolvimento' : 'Produção');
       
-      // Tentar buscar diretamente com SQL raw para verificar se o número existe
-      console.log('Tentando buscar com SQL raw...');
-      const { data: rawData, error: rawError } = await supabase.rpc('verificar_numero_existe', { 
-        numero_param: numeroFormatado 
-      });
-      
-      console.log('Resultado da busca raw:', { rawData, rawError });
-      
       // Verificando primeiro quais colunas existem na tabela
       console.log('Executando consulta normal na tabela socias...');
       const { data, error } = await supabase
