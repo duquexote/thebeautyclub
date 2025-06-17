@@ -20,14 +20,59 @@ function ProdutosContent() {
       setLoading(true);
       setError(null);
 
+      // Verificar se o login foi feito via API
+      const isAuthViaApi = localStorage.getItem('auth_via_api') === 'true';
+      
+      if (isAuthViaApi) {
+        console.log('Login via API detectado, garantindo que a sessão esteja configurada no Supabase');
+        
+        // Obter a sessão do localStorage no formato que o Supabase espera
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+        const supabaseAuthKey = `sb-${supabaseUrl}-auth-token`;
+        const storedSession = localStorage.getItem(supabaseAuthKey);
+        
+        if (storedSession) {
+          try {
+            const sessionData = JSON.parse(storedSession);
+            
+            if (sessionData.access_token && sessionData.refresh_token) {
+              // Configurar a sessão no cliente Supabase antes de tentar acessar o banco
+              console.log('Configurando sessão no cliente Supabase antes de buscar produtos');
+              await supabase.auth.setSession({
+                access_token: sessionData.access_token,
+                refresh_token: sessionData.refresh_token
+              });
+              console.log('Sessão configurada com sucesso');
+              
+              // Adicionar um pequeno delay para garantir que a sessão seja aplicada
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          } catch (sessionError) {
+            console.error('Erro ao processar sessão do localStorage:', sessionError);
+          }
+        }
+      }
+
       // Verificar se temos uma sessão válida
       const { data: { session } } = await supabase.auth.getSession();
       if (!session || !session.access_token) {
         console.error('Sessão não encontrada ou token inválido ao tentar buscar produtos');
-        throw new Error('Sessão expirada. Por favor, faça login novamente.');
+        
+        // Tentar restaurar a sessão usando a função do authHelper
+        console.log('Tentando restaurar sessão antes de desistir...');
+        
+        // Importar dinamicamente para evitar problemas de circular dependency
+        const { checkAndRestoreSession } = await import('../utils/authHelper');
+        const restoredSession = await checkAndRestoreSession();
+        
+        if (!restoredSession) {
+          throw new Error('Sessão expirada. Por favor, faça login novamente.');
+        }
+        
+        console.log('Sessão restaurada com sucesso, continuando com a busca de produtos');
+      } else {
+        console.log('Sessão válida encontrada para busca de produtos');
       }
-      
-      console.log('Sessão válida encontrada para busca de produtos');
 
       // Buscar produtos com autenticação
       console.log('Buscando produtos usando cliente Supabase autenticado');
@@ -39,7 +84,38 @@ function ProdutosContent() {
       
       if (supabaseError) {
         console.error('Erro ao buscar produtos:', supabaseError);
-        throw supabaseError;
+        
+        // Se for erro de autenticação, tentar restaurar a sessão novamente
+        if (supabaseError.code === '401') {
+          console.log('Erro 401, tentando restaurar sessão novamente...');
+          
+          // Importar dinamicamente para evitar problemas de circular dependency
+          const { checkAndRestoreSession } = await import('../utils/authHelper');
+          const restoredSession = await checkAndRestoreSession();
+          
+          if (restoredSession) {
+            console.log('Sessão restaurada com sucesso, tentando novamente');
+            
+            // Tentar novamente após restaurar a sessão
+            const { data: retryData, error: retryError } = await supabase
+              .from('produtos')
+              .select('*')
+              .order('created_at', { ascending: false });
+              
+            if (retryError) {
+              console.error('Erro persistente ao buscar produtos:', retryError);
+              throw retryError;
+            } else {
+              console.log('Produtos obtidos com sucesso após restauração de sessão:', retryData?.length || 0, 'produtos');
+              setProdutos(retryData || []);
+              return; // Sair da função pois já definimos os produtos
+            }
+          } else {
+            throw supabaseError;
+          }
+        } else {
+          throw supabaseError;
+        }
       }
       
       console.log('Produtos obtidos com sucesso:', data?.length || 0, 'produtos');
