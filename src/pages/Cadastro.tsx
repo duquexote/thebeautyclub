@@ -5,12 +5,13 @@ import { supabase, createUserWithConfirmedEmail } from '../utils/supabaseClient'
 // Etapas do cadastro
 enum EtapaCadastro {
   VERIFICAR_NUMERO = 0,
-  CADASTRO_SIMPLIFICADO = 1,
-  CADASTRO_COMPLETO_NOME = 2,
-  CADASTRO_COMPLETO_EMAIL = 3,
-  CADASTRO_COMPLETO_CERTIFICADO = 4,
-  CADASTRO_COMPLETO_NUMERO = 5,
-  CADASTRO_COMPLETO_SENHA = 6
+  VERIFICAR_OTP = 1,
+  CADASTRO_SIMPLIFICADO = 2,
+  CADASTRO_COMPLETO_NOME = 3,
+  CADASTRO_COMPLETO_EMAIL = 4,
+  CADASTRO_COMPLETO_CERTIFICADO = 5,
+  CADASTRO_COMPLETO_NUMERO = 6,
+  CADASTRO_COMPLETO_SENHA = 7
 }
 
 export default function Cadastro() {
@@ -18,6 +19,13 @@ export default function Cadastro() {
   const [etapaAtual, setEtapaAtual] = useState<EtapaCadastro>(EtapaCadastro.VERIFICAR_NUMERO);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estados para OTP
+  const [userOtp, setUserOtp] = useState<string>('');
+  const [otpHash, setOtpHash] = useState<string>('');
+  const [otpExpiry, setOtpExpiry] = useState<Date | null>(null);
+  const [nextOtpAllowed, setNextOtpAllowed] = useState<Date | null>(null);
+  const [sociaEncontrada, setSociaEncontrada] = useState<any>(null);
   
   // Dados do formulário
   const [numero, setNumero] = useState('');
@@ -45,6 +53,89 @@ export default function Cadastro() {
     cnpj?: string;
     certificado?: File | null;
   }>({nome: '', sobrenome: '', email: '', confirmarEmail: '', numero: '', senha: '', confirmarSenha: ''});
+  
+  // Função para enviar código OTP via WhatsApp
+  const enviarCodigoOTP = async (numeroTelefone: string) => {
+    try {
+      setLoading(true);
+      
+      // Verificar se já pode enviar um novo código
+      if (nextOtpAllowed && new Date() < nextOtpAllowed) {
+        const segundosRestantes = Math.ceil((nextOtpAllowed.getTime() - new Date().getTime()) / 1000);
+        setError(`Aguarde ${segundosRestantes} segundos para enviar um novo código.`);
+        return false;
+      }
+      
+      // Chamar a API para enviar o código OTP
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ number: numeroTelefone })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao enviar código de verificação');
+      }
+      
+      // Armazenar o hash OTP e o tempo de expiração
+      setOtpHash(data.otpHash);
+      setOtpExpiry(new Date(data.expiresAt));
+      setNextOtpAllowed(new Date(data.nextAllowedAt));
+      
+      console.log('Código OTP enviado com sucesso');
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao enviar código OTP:', error);
+      setError(error.message || 'Erro ao enviar código de verificação');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Função para verificar o código OTP informado pelo usuário
+  const verificarCodigoOTP = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Chamar a API para verificar o código OTP
+      const response = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          number: numero.replace(/\D/g, ''),
+          otp: userOtp,
+          otpHash: otpHash
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao verificar código');
+      }
+      
+      if (!data.valid) {
+        setError('Código inválido ou expirado. Por favor, verifique ou solicite um novo código.');
+        return;
+      }
+      
+      // Código válido, avançar para a próxima etapa
+      setEtapaAtual(EtapaCadastro.CADASTRO_SIMPLIFICADO);
+    } catch (error: any) {
+      console.error('Erro ao verificar código OTP:', error);
+      setError(error.message || 'Erro ao verificar código');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Função para verificar se o número já existe
   const verificarNumero = async () => {
@@ -95,8 +186,11 @@ export default function Cadastro() {
           return;
         }
         
-        // Número encontrado sem usuário associado - preencher dados e ir para cadastro simplificado
-        console.log('Número encontrado sem usuário associado, direcionando para cadastro simplificado');
+        // Número encontrado sem usuário associado - enviar código OTP
+        console.log('Número encontrado sem usuário associado, enviando código OTP');
+        
+        // Guardar os dados da socia encontrada
+        setSociaEncontrada(data);
         
         // Separar o nome completo em nome e sobrenome
         const nomeCompleto = data.nome || '';
@@ -114,7 +208,12 @@ export default function Cadastro() {
         
         setEmail(data.email || '');
         setConfirmarEmail(data.email || '');
-        setEtapaAtual(EtapaCadastro.CADASTRO_SIMPLIFICADO);
+        
+        // Enviar código OTP
+        await enviarCodigoOTP(numeroFormatado);
+        
+        // Avançar para a etapa de verificação OTP
+        setEtapaAtual(EtapaCadastro.VERIFICAR_OTP);
       } else {
         console.log('Número não encontrado');
         // Número não encontrado, ir para cadastro completo
@@ -128,7 +227,79 @@ export default function Cadastro() {
     }
   };
   
-  // Renderizar etapa de verificação de número
+  // Renderizar etapa de verificação OTP
+  const renderVerificarOTP = () => {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium text-gray-900">Verificação de Número</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Enviamos um código de verificação para o seu WhatsApp. Por favor, insira o código abaixo.
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            O código expira em 5 minutos.
+          </p>
+        </div>
+        
+        <div>
+          <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
+            Código de Verificação
+          </label>
+          <div className="mt-1">
+            <input
+              type="text"
+              id="otp"
+              name="otp"
+              value={userOtp}
+              onChange={(e) => setUserOtp(e.target.value)}
+              className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
+              placeholder="Digite o código de 6 dígitos"
+              maxLength={6}
+              required
+            />
+          </div>
+        </div>
+        
+        {error && (
+          <div className="text-sm text-red-600">
+            {error}
+          </div>
+        )}
+        
+        <div className="flex space-x-4">
+          <button
+            type="button"
+            onClick={verificarCodigoOTP}
+            disabled={loading || !userOtp || userOtp.length !== 6}
+            className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:bg-pink-300"
+          >
+            {loading ? 'Verificando...' : 'Verificar Código'}
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => enviarCodigoOTP(numero.replace(/\D/g, ''))}
+            disabled={loading || (nextOtpAllowed !== null && new Date() < nextOtpAllowed)}
+            className="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:bg-gray-100 disabled:text-gray-400"
+          >
+            {loading ? 'Enviando...' : 'Reenviar Código'}
+          </button>
+        </div>
+        
+        <div>
+          <button
+            type="button"
+            onClick={() => setEtapaAtual(EtapaCadastro.VERIFICAR_NUMERO)}
+            className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+          >
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
+  };
+  
+  // Renderizar etapa inicial - verificar número
   const renderVerificarNumero = () => {
     return (
       <div className="space-y-6">
@@ -958,6 +1129,30 @@ export default function Cadastro() {
     );
   };
   
+  // Renderizar conteúdo com base na etapa atual
+  const renderConteudo = () => {
+    switch (etapaAtual) {
+      case EtapaCadastro.VERIFICAR_NUMERO:
+        return renderVerificarNumero();
+      case EtapaCadastro.VERIFICAR_OTP:
+        return renderVerificarOTP();
+      case EtapaCadastro.CADASTRO_SIMPLIFICADO:
+        return renderCadastroSimplificado();
+      case EtapaCadastro.CADASTRO_COMPLETO_NOME:
+        return renderCadastroCompletoNome();
+      case EtapaCadastro.CADASTRO_COMPLETO_EMAIL:
+        return renderCadastroCompletoEmail();
+      case EtapaCadastro.CADASTRO_COMPLETO_CERTIFICADO:
+        return renderCadastroCompletoCertificado();
+      case EtapaCadastro.CADASTRO_COMPLETO_NUMERO:
+        return renderCadastroCompletoNumero();
+      case EtapaCadastro.CADASTRO_COMPLETO_SENHA:
+        return renderCadastroCompletoSenha();
+      default:
+        return renderVerificarNumero();
+    }
+  };
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -974,15 +1169,9 @@ export default function Cadastro() {
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow">
-          {etapaAtual === EtapaCadastro.VERIFICAR_NUMERO && renderVerificarNumero()}
-          {etapaAtual === EtapaCadastro.CADASTRO_SIMPLIFICADO && renderCadastroSimplificado()}
-          {etapaAtual === EtapaCadastro.CADASTRO_COMPLETO_NOME && renderCadastroCompletoNome()}
-          {etapaAtual === EtapaCadastro.CADASTRO_COMPLETO_EMAIL && renderCadastroCompletoEmail()}
-          {etapaAtual === EtapaCadastro.CADASTRO_COMPLETO_CERTIFICADO && renderCadastroCompletoCertificado()}
-          {etapaAtual === EtapaCadastro.CADASTRO_COMPLETO_NUMERO && renderCadastroCompletoNumero()}
-          {etapaAtual === EtapaCadastro.CADASTRO_COMPLETO_SENHA && renderCadastroCompletoSenha()}
+          {renderConteudo()}
         </div>
       </div>
     </div>
   );
-}
+  }
