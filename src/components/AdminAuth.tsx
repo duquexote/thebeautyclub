@@ -110,6 +110,39 @@ const AdminAuth: React.FC<AdminAuthProps> = ({
         try {
           console.log('AdminAuth - Verificando acesso ao banco de dados...');
           
+          // Verificar se o login foi feito via API
+          const isAuthViaApi = localStorage.getItem('auth_via_api') === 'true';
+          
+          if (isAuthViaApi) {
+            console.log('AdminAuth - Login via API detectado, garantindo que a sessão esteja configurada no Supabase');
+            
+            // Obter a sessão do localStorage no formato que o Supabase espera
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL.split('//')[1];
+            const supabaseAuthKey = `sb-${supabaseUrl}-auth-token`;
+            const storedSession = localStorage.getItem(supabaseAuthKey);
+            
+            if (storedSession) {
+              try {
+                const sessionData = JSON.parse(storedSession);
+                
+                if (sessionData.access_token && sessionData.refresh_token) {
+                  // Configurar a sessão no cliente Supabase antes de tentar acessar o banco
+                  console.log('AdminAuth - Configurando sessão no cliente Supabase');
+                  await supabase.auth.setSession({
+                    access_token: sessionData.access_token,
+                    refresh_token: sessionData.refresh_token
+                  });
+                  console.log('AdminAuth - Sessão configurada com sucesso');
+                }
+              } catch (sessionError) {
+                console.error('AdminAuth - Erro ao processar sessão do localStorage:', sessionError);
+              }
+            }
+          }
+          
+          // Adicionar um pequeno delay para garantir que a sessão seja aplicada
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           // Tentar fazer uma consulta simples para verificar o acesso
           const { error } = await supabase
             .from('produtos')
@@ -118,7 +151,33 @@ const AdminAuth: React.FC<AdminAuthProps> = ({
             
           if (error) {
             console.error('AdminAuth - Erro ao acessar banco de dados:', error);
-            setError(`Erro ao acessar banco de dados: ${error.message}`);
+            
+            // Se for erro de autenticação, tentar restaurar a sessão novamente
+            if (error.code === '401') {
+              console.log('AdminAuth - Erro 401, tentando restaurar sessão novamente...');
+              const restoredSession = await checkAndRestoreSession();
+              
+              if (restoredSession) {
+                console.log('AdminAuth - Sessão restaurada com sucesso, tentando novamente');
+                
+                // Tentar novamente após restaurar a sessão
+                const { error: retryError } = await supabase
+                  .from('produtos')
+                  .select('id')
+                  .limit(1);
+                  
+                if (retryError) {
+                  console.error('AdminAuth - Erro persistente ao acessar banco de dados:', retryError);
+                  setError(`Erro ao acessar banco de dados: ${retryError.message}`);
+                } else {
+                  console.log('AdminAuth - Acesso ao banco de dados confirmado após restauração de sessão');
+                }
+              } else {
+                setError(`Erro ao acessar banco de dados: ${error.message}`);
+              }
+            } else {
+              setError(`Erro ao acessar banco de dados: ${error.message}`);
+            }
           } else {
             console.log('AdminAuth - Acesso ao banco de dados confirmado');
           }
@@ -161,6 +220,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({
   }
 
   // Se chegamos aqui, o usuário está autenticado
+  console.log('AdminAuth - Usuário autenticado com sucesso, renderizando conteúdo protegido');
   return <>{children}</>;
 };
 
