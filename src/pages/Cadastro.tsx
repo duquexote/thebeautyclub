@@ -84,7 +84,8 @@ export default function Cadastro() {
         console.log('Número encontrado:', data);
         
         // Verificar se o número já tem um usuário associado
-        if (data.auth_id) {
+        // Verificamos se auth_id existe como propriedade e se não é nulo
+        if ('auth_id' in data && data.auth_id) {
           console.log('Número já tem usuário associado:', data.auth_id);
           // Já existe um usuário para este número, redirecionar para login
           setError('Já existe uma conta associada a este número. Por favor, faça login.');
@@ -210,12 +211,13 @@ export default function Cadastro() {
       const userId = userData.user.id;
       console.log('ID do usuário criado:', userId);
       
-      // Atualizar a tabela socias com o UUID do usuário e nome completo
+      // Atualizar a tabela socias com o UUID do usuário, nome completo e auth_id
       const { error: updateError } = await supabase
         .from('socias')
         .update({ 
           id: userId, // Usando a coluna id em vez de uuid
-          nome: `${nome} ${sobrenome}`.trim() // Concatenando nome e sobrenome
+          nome: `${nome} ${sobrenome}`.trim(), // Concatenando nome e sobrenome
+          auth_id: userId // Salvando o auth_id para verificar se o usuário já está cadastrado
         })
         .eq('numero', numero);
       
@@ -459,7 +461,8 @@ export default function Cadastro() {
         numero: dadosCadastro.numero,
         cnpj: dadosCadastro.cnpj,
         certificado_url: dadosCadastro.certificado ? 'URL_DO_CERTIFICADO' : null, // Aqui seria feito o upload do certificado
-        certificado_validado: dadosCadastro.certificado ? true : false
+        certificado_validado: dadosCadastro.certificado ? true : false,
+        auth_id: userId // Salvando o auth_id para verificar se o usuário já está cadastrado
       });
       
       if (sociaError) throw sociaError;
