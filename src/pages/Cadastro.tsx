@@ -56,15 +56,35 @@ export default function Cadastro() {
       
       // Formatar o número para garantir consistência
       const numeroFormatado = numero.replace(/\D/g, '');
+      console.log('Número formatado para consulta:', numeroFormatado);
+      
+      // Verificar se o cliente Supabase está configurado corretamente
+      console.log('Cliente Supabase inicializado:', !!supabase);
+      
+      // Verificar se estamos em ambiente de produção ou desenvolvimento
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      console.log('Ambiente:', isDevelopment ? 'Desenvolvimento' : 'Produção');
+      
+      // Tentar buscar diretamente com SQL raw para verificar se o número existe
+      console.log('Tentando buscar com SQL raw...');
+      const { data: rawData, error: rawError } = await supabase.rpc('verificar_numero_existe', { 
+        numero_param: numeroFormatado 
+      });
+      
+      console.log('Resultado da busca raw:', { rawData, rawError });
       
       // Verificando primeiro quais colunas existem na tabela
+      console.log('Executando consulta normal na tabela socias...');
       const { data, error } = await supabase
         .from('socias')
         .select('id, nome, email')
         .eq('numero', numeroFormatado)
         .maybeSingle(); // Usando maybeSingle em vez de single para evitar erro quando não encontrar
       
+      console.log('Resultado da consulta:', { data, error });
+      
       if (error && error.code !== 'PGRST116') {
+        console.error('Erro na consulta:', error);
         throw error;
       }
       
