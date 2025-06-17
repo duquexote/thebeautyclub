@@ -382,6 +382,10 @@ export default function Cadastro() {
       const userId = userData.user.id;
       console.log('ID do usuário criado:', userId);
       
+      // Formatar o número para garantir consistência
+      const numeroFormatado = numero.replace(/\D/g, '');
+      console.log('Atualizando socia com número formatado:', numeroFormatado);
+      
       // Atualizar a tabela socias com o UUID do usuário, nome completo e auth_id
       const { error: updateError } = await supabase
         .from('socias')
@@ -390,7 +394,7 @@ export default function Cadastro() {
           nome: `${nome} ${sobrenome}`.trim(), // Concatenando nome e sobrenome
           auth_id: userId // Salvando o auth_id para verificar se o usuário já está cadastrado
         })
-        .eq('numero', numero);
+        .eq('numero', numeroFormatado);
       
       if (updateError) throw updateError;
       
@@ -624,12 +628,16 @@ export default function Cadastro() {
       const userId = userData.user.id;
       console.log('ID do usuário criado:', userId);
       
+      // Formatar o número para garantir consistência
+      const numeroFormatado = dadosCadastro.numero.replace(/\D/g, '');
+      console.log('Inserindo socia com número formatado:', numeroFormatado);
+      
       // Criar registro na tabela socias
       const { error: sociaError } = await supabase.from('socias').insert({
         id: userId, // Usando a coluna id em vez de uuid
         nome: `${dadosCadastro.nome} ${dadosCadastro.sobrenome}`.trim(), // Concatenando nome e sobrenome
         email: dadosCadastro.email,
-        numero: dadosCadastro.numero,
+        numero: numeroFormatado,
         cnpj: dadosCadastro.cnpj,
         certificado_url: dadosCadastro.certificado ? 'URL_DO_CERTIFICADO' : null, // Aqui seria feito o upload do certificado
         certificado_validado: dadosCadastro.certificado ? true : false,
