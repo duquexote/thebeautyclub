@@ -69,7 +69,7 @@ export default function Cadastro() {
       console.log('Executando consulta normal na tabela socias...');
       const { data, error } = await supabase
         .from('socias')
-        .select('id, nome, email')
+        .select('id, nome, email, auth_id')
         .eq('numero', numeroFormatado)
         .maybeSingle(); // Usando maybeSingle em vez de single para evitar erro quando não encontrar
       
@@ -82,7 +82,20 @@ export default function Cadastro() {
       
       if (data) {
         console.log('Número encontrado:', data);
-        // Número encontrado - preencher dados e ir para cadastro simplificado
+        
+        // Verificar se o número já tem um usuário associado
+        if (data.auth_id) {
+          console.log('Número já tem usuário associado:', data.auth_id);
+          // Já existe um usuário para este número, redirecionar para login
+          setError('Já existe uma conta associada a este número. Por favor, faça login.');
+          setTimeout(() => {
+            navigate('/login', { state: { message: 'Já existe uma conta associada a este número.' } });
+          }, 2000);
+          return;
+        }
+        
+        // Número encontrado sem usuário associado - preencher dados e ir para cadastro simplificado
+        console.log('Número encontrado sem usuário associado, direcionando para cadastro simplificado');
         
         // Separar o nome completo em nome e sobrenome
         const nomeCompleto = data.nome || '';
