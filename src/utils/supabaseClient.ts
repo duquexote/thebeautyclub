@@ -346,23 +346,74 @@ export const createUserWithConfirmedEmail = async (email: string, password: stri
   try {
     console.log('Criando usuário com email confirmado:', { email, userData });
     
-    // Usando o cliente Supabase padrão para cadastro
-    // Nota: Esta abordagem não confirma automaticamente o email
-    // Para confirmação automática, seria necessário uma API serverless
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          nome: userData.nome || ''
+    // Verificar se estamos em ambiente de produção
+    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (isDevelopment) {
+      // Em ambiente de desenvolvimento, usar o cliente Supabase padrão
+      console.log('Ambiente de desenvolvimento: usando signUp padrão');
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nome: userData.nome || '',
+            sobrenome: userData.sobrenome || ''
+          }
         }
+      });
+      
+      if (error) throw error;
+      return { data, error: null };
+    } else {
+      // Em ambiente de produção, usar a API de autenticação
+      console.log('Ambiente de produção: usando API de autenticação');
+      
+      // Construir a URL da API de autenticação
+      const apiUrl = '/api/auth/register';
+      
+      // Chamar a API de autenticação
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          userData: {
+            nome: userData.nome || '',
+            sobrenome: userData.sobrenome || ''
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao criar usuário via API');
       }
-    });
-    
-    if (error) throw error;
-    
-    // Retorna os dados do usuário criado
-    return { data, error: null };
+      
+      const responseData = await response.json();
+      
+      // Se a API retornou sucesso mas não há dados de usuário, tentar fazer login diretamente
+      if (responseData.success && (!responseData.data || !responseData.data.user)) {
+        console.log('API retornou sucesso sem dados de usuário, tentando login direto');
+        
+        // Tentar fazer login diretamente
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (signInError) throw signInError;
+        return { data: signInData, error: null };
+      }
+      
+      return { 
+        data: responseData.data, 
+        error: null 
+      };
+    }
   } catch (error: any) {
     console.error('Erro ao criar usuário:', error);
     return { data: null, error };
