@@ -73,13 +73,24 @@ const BlogList: React.FC = () => {
       
       if (fetchError) throw fetchError;
       
-      // Simplificando a lógica de autores - não depende mais da tabela de usuários
+      // Buscar informações dos autores
       if (data && data.length > 0) {
+        const authorIds = [...new Set(data.map(article => article.author_id))];
+        
+        const { data: authorsData } = await supabase
+          .from('admins')
+          .select('id, name')
+          .in('id', authorIds);
+        
+        const authorsMap = (authorsData || []).reduce((map, author) => {
+          map[author.id] = author.name;
+          return map;
+        }, {} as Record<string, string>);
+        
         // Adicionar nomes dos autores aos artigos
-        // Como não temos mais autenticação do Supabase, usamos um nome padrão
         const articlesWithAuthors = data.map(article => ({
           ...article,
-          author_name: 'The Beauty Club'
+          author_name: authorsMap[article.author_id] || 'Autor'
         }));
         
         setArticles(articlesWithAuthors);

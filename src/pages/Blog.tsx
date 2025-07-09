@@ -1,28 +1,106 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { NewsItem, getNewsBySlug, getRelatedNews } from "../data/news";
+import { supabase } from "../utils/supabaseClient";
+
+// Interface para os artigos do blog
+interface BlogArticle {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  cover_image?: string;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+  published_at?: string;
+  author_id: string;
+  author_name?: string;
+  author_avatar?: string;
+}
 
 const Blog: React.FC = () => {
   // Obter o slug do artigo da URL
   const { slug } = useParams<{ slug: string }>();
   
   // Estado para armazenar o artigo atual e artigos relacionados
-  const [post, setPost] = useState<NewsItem | null>(null);
-  const [relatedPosts, setRelatedPosts] = useState<NewsItem[]>([]);
+  const [post, setPost] = useState<BlogArticle | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<BlogArticle[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Carregar o artigo e artigos relacionados quando o slug mudar
   useEffect(() => {
-    if (slug) {
-      const currentPost = getNewsBySlug(slug);
-      if (currentPost) {
-        setPost(currentPost);
-        setRelatedPosts(getRelatedNews(slug));
+    const fetchArticle = async () => {
+      if (!slug) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Buscar o artigo pelo slug
+        const { data: article, error: articleError } = await supabase
+          .from('blog_articles')
+          .select(`
+            id, title, slug, content, excerpt, cover_image, 
+            published, created_at, updated_at, published_at, author_id
+          `)
+          .eq('slug', slug)
+          .eq('published', true)
+          .single();
+        
+        if (articleError) throw articleError;
+        
+        if (!article) {
+          setError('Artigo não encontrado');
+          setLoading(false);
+          return;
+        }
+        
+        // Simplificando a lógica de autores - não depende mais da tabela de usuários
+        // Combinar dados do artigo com o autor padrão
+        const fullArticle = {
+          ...article,
+          author_name: 'The Beauty Club',
+        };
+        
+        setPost(fullArticle);
+        
+        // Buscar artigos relacionados (excluindo o atual)
+        const { data: related } = await supabase
+          .from('blog_articles')
+          .select(`
+            id, title, slug, content, excerpt, cover_image, 
+            published, created_at, updated_at, published_at, author_id
+          `)
+          .eq('published', true)
+          .neq('id', article.id)
+          .order('published_at', { ascending: false })
+          .limit(3);
+        
+        setRelatedPosts(related || []);
+      } catch (err: any) {
+        console.error('Erro ao buscar artigo:', err);
+        setError(err.message || 'Erro ao carregar o artigo');
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+    
+    fetchArticle();
   }, [slug]);
 
-  // Se o artigo não for encontrado
-  if (!post) {
+  // Se estiver carregando
+  if (loading) {
+    return (
+      <div className="pt-24 pb-16 flex justify-center items-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+      </div>
+    );
+  }
+  
+  // Se ocorreu um erro ou o artigo não foi encontrado
+  if (error || !post) {
     return (
       <div className="pt-24 pb-16 text-center">
         <div className="container mx-auto px-4">
@@ -51,10 +129,9 @@ const Blog: React.FC = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl">
             <div className="mb-4">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-pink-800 backdrop-blur-sm">
-                {post.category.name}
+              <span className="ml-3 text-white/80 text-sm">
+                {new Date(post.published_at || post.created_at).toLocaleDateString('pt-BR')}
               </span>
-              <span className="ml-3 text-white/80 text-sm">{post.publishedAt}</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-200 to-purple-200">
               {post.title}
@@ -63,20 +140,14 @@ const Blog: React.FC = () => {
               {post.excerpt}
             </p>
             <div className="flex items-center">
-              {post.author.avatar ? (
-                <img 
-                  src={post.author.avatar} 
-                  alt={post.author.name} 
-                  className="w-12 h-12 rounded-full mr-4 object-cover ring-2 ring-pink-300"
-                />
-              ) : (
-                <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-md">
-                  <span className="text-white font-medium">{post.author.initials}</span>
-                </div>
-              )}
+              <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-md">
+                <span className="text-white font-medium">
+                  {post.author_name?.charAt(0) || 'A'}
+                </span>
+              </div>
               <div>
-                <h3 className="font-medium">{post.author.name}</h3>
-                <p className="text-sm text-white/80">{post.author.role}</p>
+                <h3 className="font-medium">{post.author_name || 'Autor'}</h3>
+                <p className="text-sm text-white/80">The Beauty Club</p>
               </div>
             </div>
           </div>
@@ -89,9 +160,9 @@ const Blog: React.FC = () => {
           {/* Main Content */}
           <div className="w-full lg:w-2/3 px-4">
             <div className="prose prose-lg max-w-none prose-headings:text-gray-800 prose-a:text-pink-500 prose-a:hover:text-purple-600">
-              {post.coverImage && (
+              {post.cover_image && (
                 <img
-                  src={post.coverImage}
+                  src={post.cover_image}
                   alt={post.title}
                   className="w-full h-auto rounded-xl shadow-md mb-8"
                 />
@@ -113,9 +184,9 @@ const Blog: React.FC = () => {
                 {relatedPosts.map((relatedPost) => (
                   <div key={relatedPost.id} className="flex items-start">
                     <div className="w-20 h-20 flex-shrink-0 overflow-hidden rounded-md">
-                      {relatedPost.coverImage ? (
+                      {relatedPost.cover_image ? (
                         <img 
-                          src={relatedPost.coverImage} 
+                          src={relatedPost.cover_image} 
                           alt={relatedPost.title}
                           className="w-full h-full object-cover"
                         />
@@ -127,7 +198,9 @@ const Blog: React.FC = () => {
                       <h4 className="font-medium hover:text-pink-500">
                         <Link to={`/blog/${relatedPost.slug}`} className="hover:text-pink-500">{relatedPost.title}</Link>
                       </h4>
-                      <p className="text-sm text-gray-500 mt-1">{relatedPost.publishedAt}</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {new Date(relatedPost.published_at || relatedPost.created_at).toLocaleDateString('pt-BR')}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -139,29 +212,12 @@ const Blog: React.FC = () => {
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-              <h3 className="text-xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-600">Categorias</h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link to="/blog?category=direito-medico" className="text-gray-700 hover:text-pink-500">
-                    Direito Médico
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/blog?category=estetica" className="text-gray-700 hover:text-pink-500">
-                    Estética
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/blog?category=empreendedorismo" className="text-gray-700 hover:text-pink-500">
-                    Empreendedorismo
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/blog?category=gestao" className="text-gray-700 hover:text-pink-500">
-                    Gestão de Clínicas
-                  </Link>
-                </li>
-              </ul>
+              <h3 className="text-xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-600">Mais do Blog</h3>
+              <div className="flex justify-center">
+                <Link to="/blog" className="bg-pink-100 hover:bg-pink-200 text-pink-800 font-medium py-2 px-4 rounded-md transition duration-300">
+                  Ver todos os artigos
+                </Link>
+              </div>
             </div>
           </div>
         </div>
