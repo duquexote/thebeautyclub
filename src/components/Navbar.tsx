@@ -29,6 +29,7 @@ const Navbar: React.FC = () => {
 
   // Verificar se estamos na página inicial ou em outras páginas
   const isHomePage = location.pathname === '/';
+  const isClientePage = location.pathname === '/cliente';
   
   return (
     <nav
@@ -38,10 +39,10 @@ const Navbar: React.FC = () => {
           : "bg-transparent py-4"
       }`}
     >
-      <div className="container-custom flex justify-between items-center">
+      <div className={`container-custom ${isClientePage ? 'flex justify-center' : 'flex justify-between'} items-center`}>
         <Link
           to="/"
-          className="flex items-center gap-2"
+          className={`flex items-center gap-2 ${isClientePage ? 'mx-auto' : ''}`}
         >
           <img 
             src="../images/logo-tbc.svg" 
