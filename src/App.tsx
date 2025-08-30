@@ -37,7 +37,7 @@ function AppContent() {
         <Route path="/minha-conta" element={<MinhaConta />} />
         <Route path="/cliente" element={<Cliente />} />
       </Routes>
-      <Footer />
+      {!isClientePage && <Footer />}
     </div>
   );
 }
