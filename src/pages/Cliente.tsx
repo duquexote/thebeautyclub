@@ -23,7 +23,7 @@ const Cliente: React.FC = () => {
             
             {/* Destaque 100% grátis */}
             <div className="bg-pink-100 text-pink-800 font-bold px-4 py-2 rounded-full inline-block mb-8">
-              100% grátis
+              100% GRÁTIS
             </div>
             
             {/* Botão CTA */}
