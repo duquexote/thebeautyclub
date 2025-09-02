@@ -1,6 +1,51 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { createClient } from '@supabase/supabase-js';
+
+// Cliente Supabase para o projeto Takecursos com as credenciais corretas
+const takecursosSupabase = createClient(
+  'https://cmkxofgfbckoorhvtlxp.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta3hvZmdmYmNrb29yaHZ0bHhwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Njk5Mjc1OSwiZXhwIjoyMDYyNTY4NzU5fQ.GyK0d7h1l1yeOmc2NP6kYJ1iA3i-RXxwgfOaUsMS6tw'
+);
 
 const Cliente: React.FC = () => {
+  // Link do WhatsApp padrão (será substituído pelo valor do Supabase)
+  const [whatsappLink, setWhatsappLink] = useState<string>('https://wa.me/5511999999999?text=Ol%C3%A1%2C%20quero%20entrar%20no%20Beauty%20Club%21');
+  
+  useEffect(() => {
+    // Função para buscar o link do WhatsApp diretamente do Supabase
+    const fetchWhatsappLink = async () => {
+      try {
+        console.log('Buscando link do WhatsApp do Supabase (Takecursos)...');
+        
+        // Buscando o link diretamente do Supabase, projeto Takecursos, tabela grupo_ativo
+        console.log('Executando consulta: SELECT link FROM grupo_ativo WHERE id = 1');
+        const { data, error } = await takecursosSupabase
+          .from('grupo_ativo')
+          .select('*')
+          .eq('id', 1)
+          .maybeSingle();
+        
+        console.log('Resposta completa do Supabase:', data);
+        
+        if (error) {
+          console.error('Erro ao buscar link do WhatsApp:', error);
+          return;
+        }
+        
+        if (data && data.link) {
+          console.log('Link do WhatsApp obtido com sucesso:', data.link);
+          console.log('Tipo do link:', typeof data.link);
+          setWhatsappLink(data.link);
+        } else {
+          console.log('Dados retornados do Supabase não contêm o link esperado:', data);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar link do WhatsApp:', err);
+      }
+    };
+    
+    fetchWhatsappLink();
+  }, []); // Executar apenas uma vez ao montar o componente
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50">
       <div className="container mx-auto px-4 py-8 max-w-md">
@@ -20,7 +65,7 @@ const Cliente: React.FC = () => {
             </p>
             {/* Botão CTA */}
             <a 
-              href="https://wa.me/5511999999999?text=Ol%C3%A1%2C%20quero%20entrar%20no%20Beauty%20Club%21" 
+              href={whatsappLink} 
               target="_blank" 
               rel="noopener noreferrer" 
               className="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition-colors duration-300 mb-2"
